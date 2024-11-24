@@ -10,7 +10,7 @@ export default class UsersController extends Controller {
   async showUserDetails(userId) {
     console.log('showUserDetails method called with userId:', userId);
     try {
-      const response = await fetch(`http://localhost:8080/api/users/${userId}`);
+      const response = await fetch(`http://localhost:8080/backend_war_exploded/UserServlet/${userId}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch user details: ${response.statusText}`);
       }

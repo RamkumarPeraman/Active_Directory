@@ -3,7 +3,8 @@
   <div class="tiles">
     {{#each this.users as |user|}}
       <div class="tile">
-        <a href="#" {{on "click" (fn this.showUserDetails user.id)}}>{{user.firstName}}</a>
+        <a href="#" {{on "click" (fn this.showUserDetails user.id)}}>{{user.first_name}}</a>
+        <p></p>
       </div>
     {{else}}
       <p>No users found.</p>
@@ -15,24 +16,24 @@
         <button class="close-button" {{on "click" this.closePopup}}>X</button>
         <p>
             <strong>First Name:</strong>
-            {{#if this.selectedUser.firstName}}
-               <i>{{this.selectedUser.firstName}}</i>
+            {{#if this.selectedUser.first_name}}
+               <i>{{this.selectedUser.first_name}}</i>
             {{else}}
                <i>No First Name found</i>
             {{/if}}
         </p>
          <p>
             <strong>Last Name:</strong>
-            {{#if this.selectedUser.lastName}}
-               <i>{{this.selectedUser.lastName}}</i>
+            {{#if this.selectedUser.last_name}}
+               <i>{{this.selectedUser.last_name}}</i>
             {{else}}
               <i>No Last Name found</i>
             {{/if}}
         </p>
          <p>
             <strong>Phone Number:</strong>
-            {{#if this.selectedUser.phoneNumber}}
-               <i>{{this.selectedUser.phoneNumber}}</i> 
+            {{#if this.selectedUser.phone_number}}
+               <i>{{this.selectedUser.phone_number}}</i> 
             {{else}}
                <i>No Phone Number found</i>
             {{/if}}
