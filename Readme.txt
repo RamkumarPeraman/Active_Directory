@@ -5,9 +5,8 @@
     * ./agent
 
 2 - start the server
-    * cd project-backend
-    * mvn clean install
-    * mvn exec:java 
+    * cd backend
+    * run tamcat
 
 3 - start the client
     * cd frontend 
