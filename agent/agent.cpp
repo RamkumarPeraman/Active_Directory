@@ -1,14 +1,10 @@
 #include <iostream>
 #include <ldap.h>
-#include <mysql_driver.h>
-#include <mysql_connection.h>
-#include <cppconn/statement.h>
-#include <cppconn/prepared_statement.h>
+#include <mysql/mysql.h>
 #include <cstdlib>
 #include <cstring>
 
 using namespace std;
-using namespace sql;
 
 int main() {
     LDAP* ld;                              
@@ -55,66 +51,88 @@ int main() {
     }
     cout << "LDAP search successful. Processing results..." << endl;
 
-    const string db_url = "tcp://127.0.0.1:3306";
-    const string db_user = "ram";
-    const string db_pass = "Dudububu@27";
-    const string db_name = "act_dir";
+    const char* db_host = "127.0.0.1";
+    const char* db_user = "ram";
+    const char* db_pass = "Dudububu@27";
+    const char* db_name = "act_dir";
 
-    try {
-        mysql::MySQL_Driver* driver = mysql::get_mysql_driver_instance();
-        unique_ptr<Connection> con(driver->connect(db_url, db_user, db_pass));
-        con->setSchema(db_name);
-
-        unique_ptr<PreparedStatement> pstmt_insert(con->prepareStatement("INSERT INTO users (first_name, last_name, phone_number) VALUES (?, ?, ?)"));
-        unique_ptr<PreparedStatement> pstmt_select(con->prepareStatement("SELECT COUNT(*) FROM users WHERE first_name = ? AND last_name = ? AND phone_number = ?"));
-
-        for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-            char* dn = ldap_get_dn(ld, entry); 
-            cout << "DN: " << (dn ? dn : "Unknown") << endl;
-            ldap_memfree(dn);
-
-            string givenName, sn, telephoneNumber;
-            for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
-                if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
-                    if (strcmp(attribute, "givenName") == 0) {
-                        givenName = values[0]->bv_val;
-                    } else if (strcmp(attribute, "sn") == 0) {
-                        sn = values[0]->bv_val;
-                    } else if (strcmp(attribute, "telephoneNumber") == 0) {
-                        telephoneNumber = values[0]->bv_val;
-                    }
-                    ldap_value_free_len(values);
-                }
-                ldap_memfree(attribute);
-            }
-            pstmt_select->setString(1, givenName);
-            pstmt_select->setString(2, sn);
-            pstmt_select->setString(3, telephoneNumber);
-            unique_ptr<ResultSet> res(pstmt_select->executeQuery());
-            res->next();
-            if (res->getInt(1) == 0) {
-                if (!givenName.empty() && !sn.empty() && !telephoneNumber.empty()) {
-                    pstmt_insert->setString(1, givenName);
-                    pstmt_insert->setString(2, sn);
-                    pstmt_insert->setString(3, telephoneNumber);
-                    pstmt_insert->execute();
-                    cout << "Inserted: " << givenName << ", " << sn << ", " << telephoneNumber << endl;
-                }
-            } else {
-                cout << "Record already exists: " << givenName << ", " << sn << ", " << telephoneNumber << endl;
-            }
-            cout << "------------------------------------" << endl;
-        }
-
-        pstmt_insert->close();
-        pstmt_select->close();
-        con->close();
-    } catch (SQLException &e) {
-        cerr << "MySQL error: " << e.what() << endl;
+    MYSQL* conn;
+    conn = mysql_init(NULL);
+    if (conn == NULL) {
+        cerr << "MySQL initialization failed" << endl;
         ldap_msgfree(result);
         ldap_unbind_ext_s(ld, NULL, NULL);
         return EXIT_FAILURE;
     }
+    if (mysql_real_connect(conn, db_host, db_user, db_pass, db_name, 0, NULL, 0) == NULL) {
+        cerr << "MySQL connection failed: " << mysql_error(conn) << endl;
+        mysql_close(conn);
+        ldap_msgfree(result);
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        return EXIT_FAILURE;
+    }
+    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        char* dn = ldap_get_dn(ld, entry); 
+        cout << "DN: " << (dn ? dn : "Unknown") << endl;
+        ldap_memfree(dn);
+
+        string givenName, sn, telephoneNumber;
+        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
+            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
+                if(strcmp(attribute, "givenName") == 0) {
+                    givenName = values[0]->bv_val;
+                } 
+                else if(strcmp(attribute, "sn") == 0) {
+                    sn = values[0]->bv_val;
+                } 
+                else if (strcmp(attribute, "telephoneNumber") == 0) {
+                    telephoneNumber = values[0]->bv_val;
+                }
+                ldap_value_free_len(values);
+            }
+            ldap_memfree(attribute);
+        }
+
+        if (!givenName.empty() && !sn.empty() && !telephoneNumber.empty()) {
+            string select_query = "SELECT COUNT(*) FROM users WHERE first_name = '" + givenName + "' AND last_name = '" + sn + "' AND phone_number = '" + telephoneNumber + "'";
+            if (mysql_query(conn, select_query.c_str())) {
+                cerr << "MySQL query failed: " << mysql_error(conn) << endl;
+                mysql_close(conn);
+                ldap_msgfree(result);
+                ldap_unbind_ext_s(ld, NULL, NULL);
+                return EXIT_FAILURE;
+            }
+            MYSQL_RES* res = mysql_store_result(conn);
+            if (res == NULL) {
+                cerr << "MySQL store result failed: " << mysql_error(conn) << endl;
+                mysql_close(conn);
+                ldap_msgfree(result);
+                ldap_unbind_ext_s(ld, NULL, NULL);
+                return EXIT_FAILURE;
+            }
+            MYSQL_ROW row = mysql_fetch_row(res);
+            int count = atoi(row[0]);
+            mysql_free_result(res);
+
+            if(count == 0) {
+                string insert_query = "INSERT INTO users (first_name, last_name, phone_number) VALUES ('" + givenName + "', '" + sn + "', '" + telephoneNumber + "')";
+                if (mysql_query(conn, insert_query.c_str())) {
+                    cerr << "MySQL insert failed: " << mysql_error(conn) << endl;
+                    mysql_close(conn);
+                    ldap_msgfree(result);
+                    ldap_unbind_ext_s(ld, NULL, NULL);
+                    return EXIT_FAILURE;
+                }
+                cout << "Inserted: " << givenName << ", " << sn << ", " << telephoneNumber << endl;
+            } 
+            else {
+                cout << "Record already exists: " << givenName << ", " << sn << ", " << telephoneNumber << endl;
+            }
+        }
+        cout << "------------------------------------" << endl;
+    }
+
+    mysql_close(conn);
     ber_free(ber, 0);
     ldap_msgfree(result);
     ldap_unbind_ext_s(ld, NULL, NULL);
