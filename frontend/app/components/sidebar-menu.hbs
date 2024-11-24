@@ -1,0 +1,9 @@
+<nav class="sidebar">
+  <ul>
+    <li class={{if (eq @currentRoute "home") "active"}}><LinkTo @route="home">Home</LinkTo></li>
+    <li class={{if (eq @currentRoute "users") "active"}}><LinkTo @route="users">Users</LinkTo></li>
+    <li><a href="#">Computers</a></li>
+    <li><a href="#">OU</a></li>
+    <li><a href="#">Group</a></li>
+  </ul>
+</nav>
