@@ -1,5 +1,5 @@
 
-1 - start the LDAP 
+1 - #start the LDAP 
     * cd agent
     * g++ -I/usr/include -L/usr/lib/x86_64-linux-gnu agent.cpp -o agent -lldap -llber -lmysqlcppconn
     * ./agent
