@@ -8,7 +8,7 @@ export default class UsersController extends Controller {
 
   @action
   async showUserDetails(userId) {
-    console.log('showUserDetails method called with userId:', userId);
+    // console.log('showUserDetails method called with userId:', userId);
     try {
       const response = await fetch(`http://localhost:8080/backend_war_exploded/UserServlet/${userId}`);
       if (!response.ok) {

@@ -14,7 +14,7 @@ int main() {
     struct berval** values;                
     int rc;                                
 
-    const char* ldap_server = "ldap://192.168.129.129"; 
+    const char* ldap_server = "ldap://10.94.74.83"; 
     const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";  
     const char* password = "Ram@123"; 
     const char* base_dn = "dc=zoho,dc=com";   
@@ -22,6 +22,7 @@ int main() {
     const char* attributes[] = {"givenName", "sn", "telephoneNumber", NULL}; 
 
     rc = ldap_initialize(&ld, ldap_server);
+    
     if (rc != LDAP_SUCCESS) {
         cerr << "Failed to initialize LDAP connection: " << ldap_err2string(rc) << endl;
         return EXIT_FAILURE;
