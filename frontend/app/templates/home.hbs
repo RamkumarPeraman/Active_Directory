@@ -2,8 +2,8 @@
     <h1 class="heading">Active Directory</h1>
     <div class="tiles">
     <div class="tile"><a class={{if (eq @currentRoute "users") "active"}}><LinkTo @route="users">Users</LinkTo></a></div>
-    <div class="tile"><a href="#">Computers</a></div>
-    <div class="tile"><a href="#">Organizational Unit</a></div>
-    <div class="tile"><a href="#">Group</a></div>
+    <div class="tile"><a class={{if (eq @currentRoute "computers") "active"}}><LinkTo @route="computers">Computers</LinkTo></a></div>    
+    <div class="tile"><a class={{if (eq @currentRoute "ou") "active"}}><LinkTo @route="ou">Organizational Unit</LinkTo></a></div>
+    <div class="tile"><a class={{if (eq @currentRoute "group") "active"}}><LinkTo @route="group">Group</LinkTo></a></div>
     </div>
 </div>

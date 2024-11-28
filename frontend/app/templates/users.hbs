@@ -13,7 +13,7 @@
   {{#if this.selectedUser}}
     <div class="user-popup">
       <div class="popup-content">
-        <button class="close-button" {{on "click" this.closePopup}}>X</button>
+        <button class="close-button" type="button" {{on "click" this.closePopup}}>X</button>
         <p>
             <strong>First Name:</strong>
             {{#if this.selectedUser.first_name}}

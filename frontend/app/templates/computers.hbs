@@ -1,2 +1,44 @@
-{{page-title "Computers"}}
-{{outlet}}
+<div class="computer-grid">
+  <h1 class="heading">Computers</h1>
+  <div class="tiles">
+    {{#each this.computers as |computer|}}
+      <div class="tile">
+        <a href="#" {{on "click" (fn this.showComputerDetails computer.id)}}>{{computer.computer_name}}</a>
+        <p></p>
+      </div>
+    {{else}}
+      <p>No computers found.</p>
+    {{/each}}
+  </div>
+  {{#if this.selectedComputer}}
+    <div class="computer-popup">
+      <div class="popup-content">
+        <button class="close-button" {{on "click" this.closePopup}}>X</button>
+        <p>
+            <strong>Computer Name:</strong>
+            {{#if this.selectedComputer.computer_name}}
+               <i>{{this.selectedComputer.computer_name}}</i>
+            {{else}}
+               <i>No Computer Name found</i>
+            {{/if}}
+        </p>
+         <p>
+            <strong>Computer Version:</strong>
+            {{#if this.selectedComputer.computer_version}}
+               <i>{{this.selectedComputer.computer_version}}</i>
+            {{else}}
+              <i>No Computer Version found</i>
+            {{/if}}
+        </p>
+         <p>
+            <strong>Description:</strong>
+            {{#if this.selectedComputer.description}}
+               <i>{{this.selectedComputer.description}}</i> 
+            {{else}}
+               <i>No Description found</i>
+            {{/if}}
+          </p>
+      </div>
+    </div>
+  {{/if}}
+</div>

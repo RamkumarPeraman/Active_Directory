@@ -1,2 +1,36 @@
-{{page-title "Ou"}}
-{{outlet}}
+<div class="ou-grid">
+  <h1 class="heading">Organizational Units</h1>
+  <div class="tiles">
+    {{#each this.ous as |ou|}}
+      <div class="tile">
+        <a href="#" {{on "click" (fn this.showOUDetails ou.id)}}>{{ou.ou_name}}</a>
+        <p></p>
+      </div>
+    {{else}}
+      <p>No organizational units found.</p>
+    {{/each}}
+  </div>
+  {{#if this.selectedOU}}
+    <div class="ou-popup">
+      <div class="popup-content">
+        <button class="close-button" {{on "click" this.closePopup}}>X</button>
+        <p>
+            <strong>OU Name:</strong>
+            {{#if this.selectedOU.ou_name}}
+               <i>{{this.selectedOU.ou_name}}</i>
+            {{else}}
+               <i>No OU Name found</i>
+            {{/if}}
+        </p>
+         <p>
+            <strong>Description:</strong>
+            {{#if this.selectedOU.description}}
+               <i>{{this.selectedOU.description}}</i> 
+            {{else}}
+               <i>No Description found</i>
+            {{/if}}
+          </p>
+      </div>
+    </div>
+  {{/if}}
+</div>
