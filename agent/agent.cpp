@@ -33,7 +33,7 @@ int main() {
     struct berval** values;                
     int rc;                                
 
-    const char* ldap_server = "ldap://10.94.74.83"; 
+    const char* ldap_server = "ldap://192.168.129.35"; // win server ip
     const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";  
     const char* password = "Ram@123"; 
     const char* base_dn = "dc=zoho,dc=com";   
@@ -46,7 +46,7 @@ int main() {
     //arrays for attributes
     const char* user_attributes[] = {"givenName", "sn", "telephoneNumber", "mail", "physicalDeliveryOfficeName", "description", NULL};
     const char* group_attributes[] = {"cn", "mail", "description", NULL};
-    const char* computer_attributes[] = {"cn", "operatingSystem", "description", NULL};
+    const char* computer_attributes[] = {"cn", "physicalDeliveryOfficeName", "description", NULL};
     const char* ou_attributes[] = {"ou", "description", NULL};
 
     rc = ldap_initialize(&ld, ldap_server);
@@ -172,15 +172,15 @@ int main() {
         int entryCount = ldap_count_entries(ld, result);
 
         for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-            string computerName, operatingSystem, description;
+            string computerName, physicalDeliveryOfficeName, description;
 
             for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
                 if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
                     if (strcmp(attribute, "cn") == 0) {
                         computerName = values[0]->bv_val;
                     }
-                    else if (strcmp(attribute, "operatingSystem") == 0) {
-                        operatingSystem = values[0]->bv_val;
+                    else if (strcmp(attribute, "physicalDeliveryOfficeName") == 0) {
+                        physicalDeliveryOfficeName = values[0]->bv_val;
                     }
                     else if (strcmp(attribute, "description") == 0) {
                         description = values[0]->bv_val;
@@ -190,10 +190,10 @@ int main() {
                 ldap_memfree(attribute);
             }
 
-            cout << "computer data sent to ComputerDataServlet: " << computerName << ", " << operatingSystem << ", " << description << endl;
+            cout << "computer data sent to ComputerDataServlet: " << computerName << ", " << physicalDeliveryOfficeName << ", " << description << endl;
 
             // Send data even if some fields are missing
-            string postData = "computerName=" + computerName + "&operatingSystem=" + (operatingSystem.empty() ? "N/A" : operatingSystem) + "&description=" + (description.empty() ? "N/A" : description);
+            string postData = "computerName=" + computerName + "&physicalDeliveryOfficeName=" + (physicalDeliveryOfficeName.empty() ? "N/A" : physicalDeliveryOfficeName) + "&description=" + (description.empty() ? "N/A" : description);
             sendDataToServlet("http://localhost:8080/backend_war_exploded/ComputerDataServlet", postData);
         }
         ldap_msgfree(result);

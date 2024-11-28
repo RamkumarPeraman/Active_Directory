@@ -6,7 +6,6 @@ import jakarta.servlet.http.*;
 import java.io.*;
 import java.sql.*;
 import com.example.act_dir.cors_filter.CORS_Filter;
-
 public class ComputerServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -44,19 +43,19 @@ public class ComputerServlet extends HttpServlet {
                 out.write(computers.toString());
             } else {
                 String computerId = pathInfo.substring(1);
-                String query = "SELECT computer_name, computer_version, description FROM computer_det WHERE id = ?";
+                String query = "SELECT computer_name, computer_location, description FROM computer_det WHERE id = ?";
                 pstmt = conn.prepareStatement(query);
                 pstmt.setString(1, computerId);
                 rs = pstmt.executeQuery();
 
                 if (rs.next()) {
                     String computerName = rs.getString("computer_name");
-                    String computerVersion = rs.getString("computer_version");
+                    String computerLocation = rs.getString("computer_location");
                     String description = rs.getString("description");
 
                     StringBuilder computerDetails = new StringBuilder("{");
                     computerDetails.append("\"computer_name\":\"").append(computerName).append("\",")
-                            .append("\"computer_version\":\"").append(computerVersion).append("\",")
+                            .append("\"computer_location\":\"").append(computerLocation).append("\",")
                             .append("\"description\":\"").append(description).append("\"")
                             .append("}");
 

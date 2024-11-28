@@ -64,7 +64,7 @@
 <body>
 <div class="container">
     <h1><%= "Welcome to Active Directory" %></h1>
-    <a href="http://localhost:4201/home" class="link-button">Click Here</a>
+    <a href="http://localhost:4200/home" class="link-button">Click Here</a>
 </div>
 </body>
 </html>

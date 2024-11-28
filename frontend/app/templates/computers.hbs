@@ -11,7 +11,7 @@
     {{/each}}
   </div>
   {{#if this.selectedComputer}}
-    <div class="computer-popup">
+    <div class="popup">
       <div class="popup-content">
         <button class="close-button" {{on "click" this.closePopup}}>X</button>
         <p>
@@ -23,11 +23,11 @@
             {{/if}}
         </p>
          <p>
-            <strong>Computer Version:</strong>
-            {{#if this.selectedComputer.computer_version}}
-               <i>{{this.selectedComputer.computer_version}}</i>
+            <strong>Computer Location:</strong>
+            {{#if this.selectedComputer.computer_location}}
+               <i>{{this.selectedComputer.computer_location}}</i>
             {{else}}
-              <i>No Computer Version found</i>
+              <i>No Computer Location found</i>
             {{/if}}
         </p>
          <p>

@@ -13,11 +13,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class ComputerDataServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String computerName = request.getParameter("computerName");
-        String computerVersion = request.getParameter("computerVersion");
+        String computerLocation = request.getParameter("computerLocation");
         String description = request.getParameter("description");
 
         try (Connection conn = DBConnection.getConnection()) {
-            if (insertComputer(conn, computerName, computerVersion, description)) {
+            if (insertComputer(conn, computerName, computerLocation, description)) {
                 response.getWriter().println("Computer data inserted successfully!");
             } else {
                 response.getWriter().println("Computer data insertion failed!");
@@ -40,11 +40,11 @@ public class ComputerDataServlet extends HttpServlet {
         response.getWriter().println("<html><body><h1>Computer Data Inserted</h1></body></html>");
     }
 
-    private boolean insertComputer(Connection conn, String computerName, String computerVersion, String description) throws SQLException {
-        String insertSql = "INSERT INTO computer_det (computer_name, computer_version, description) VALUES (?, ?, ?)";
+    private boolean insertComputer(Connection conn, String computerName, String computerLocation, String description) throws SQLException {
+        String insertSql = "INSERT INTO computer_det (computer_name, computer_location, description) VALUES (?, ?, ?)";
         try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
             insertStmt.setString(1, computerName);
-            insertStmt.setString(2, computerVersion);
+            insertStmt.setString(2, computerLocation);
             insertStmt.setString(3, description);
 
             int rowsInserted = insertStmt.executeUpdate();
