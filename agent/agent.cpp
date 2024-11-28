@@ -1,11 +1,30 @@
 #include <iostream>
 #include <ldap.h>
-#include <mysql/mysql.h>
 #include <cstdlib>
 #include <cstring>
+#include <curl/curl.h>
 
 using namespace std;
+void sendDataToServlet(const string& servletUrl, const string& postData) {
+    CURL *curl;
+    CURLcode res;
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
 
+    if(curl) {
+        // Set curl options
+        curl_easy_setopt(curl, CURLOPT_URL, servletUrl.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+        res = curl_easy_perform(curl);
+
+        if(res != CURLE_OK) {
+            cerr << "CURL failed: " << curl_easy_strerror(res) << endl;
+        }
+
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+}
 int main() {
     LDAP* ld;                              
     LDAPMessage* result, *entry;           
@@ -18,16 +37,24 @@ int main() {
     const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";  
     const char* password = "Ram@123"; 
     const char* base_dn = "dc=zoho,dc=com";   
-    const char* filter = "(objectClass=user)";  
-    const char* attributes[] = {"givenName", "sn", "telephoneNumber", NULL}; 
+
+    // LDAP filter for users, groups, computers, and OUs
+    const char* user_filter = "(objectClass=user)";
+    const char* group_filter = "(objectClass=group)";
+    const char* computer_filter = "(objectClass=computer)";
+    const char* ou_filter = "(objectClass=organizationalUnit)";
+    //arrays for attributes
+    const char* user_attributes[] = {"givenName", "sn", "telephoneNumber", "mail", "physicalDeliveryOfficeName", "description", NULL};
+    const char* group_attributes[] = {"cn", "mail", "description", NULL};
+    const char* computer_attributes[] = {"cn", "operatingSystem", "description", NULL};
+    const char* ou_attributes[] = {"ou", "description", NULL};
 
     rc = ldap_initialize(&ld, ldap_server);
-    
+    cout << "process start" << endl;
     if (rc != LDAP_SUCCESS) {
         cerr << "Failed to initialize LDAP connection: " << ldap_err2string(rc) << endl;
         return EXIT_FAILURE;
     }
-    cout << "LDAP connection initialized." << endl;
 
     int ldap_version = LDAP_VERSION3;
     ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version);
@@ -42,102 +69,169 @@ int main() {
         ldap_unbind_ext_s(ld, NULL, NULL);
         return EXIT_FAILURE;
     }
-    cout << "LDAP bind successful." << endl;
 
-    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, filter, const_cast<char**>(attributes), 0, NULL, NULL, NULL, 0, &result);
+    // Fetch User Data
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, user_filter, const_cast<char**>(user_attributes), 0, NULL, NULL, NULL, 0, &result);
     if (rc != LDAP_SUCCESS) {
-        cerr << "LDAP search failed: " << ldap_err2string(rc) << endl;
+        cerr << "LDAP user search failed: " << ldap_err2string(rc) << endl;
         ldap_unbind_ext_s(ld, NULL, NULL);
         return EXIT_FAILURE;
     }
-    cout << "LDAP search successful. Processing results..." << endl;
+    cout << "Searching for User objects..." << endl;
 
-    const char* db_host = "127.0.0.1";
-    const char* db_user = "ram";
-    const char* db_pass = "Dudububu@27";
-    const char* db_name = "act_dir";
-
-    MYSQL* conn;
-    conn = mysql_init(NULL);
-    if (conn == NULL) {
-        cerr << "MySQL initialization failed" << endl;
-        ldap_msgfree(result);
-        ldap_unbind_ext_s(ld, NULL, NULL);
-        return EXIT_FAILURE;
-    }
-    if (mysql_real_connect(conn, db_host, db_user, db_pass, db_name, 0, NULL, 0) == NULL) {
-        cerr << "MySQL connection failed: " << mysql_error(conn) << endl;
-        mysql_close(conn);
-        ldap_msgfree(result);
-        ldap_unbind_ext_s(ld, NULL, NULL);
-        return EXIT_FAILURE;
-    }
     for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-        char* dn = ldap_get_dn(ld, entry); 
-        cout << "DN: " << (dn ? dn : "Unknown") << endl;
-        ldap_memfree(dn);
+        string givenName, sn, telephoneNumber, mail, office, description;
 
-        string givenName, sn, telephoneNumber;
         for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
             if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
-                if(strcmp(attribute, "givenName") == 0) {
+                if (strcmp(attribute, "givenName") == 0) {
                     givenName = values[0]->bv_val;
                 } 
-                else if(strcmp(attribute, "sn") == 0) {
+                else if (strcmp(attribute, "sn") == 0) {
                     sn = values[0]->bv_val;
                 } 
                 else if (strcmp(attribute, "telephoneNumber") == 0) {
                     telephoneNumber = values[0]->bv_val;
+                }
+                else if (strcmp(attribute, "mail") == 0) {
+                    mail = values[0]->bv_val;  
+                }
+                else if (strcmp(attribute, "physicalDeliveryOfficeName") == 0) {
+                    office = values[0]->bv_val;
+                }
+                else if (strcmp(attribute, "description") == 0) {
+                    description = values[0]->bv_val;
                 }
                 ldap_value_free_len(values);
             }
             ldap_memfree(attribute);
         }
 
-        if (!givenName.empty() && !sn.empty() && !telephoneNumber.empty()) {
-            string select_query = "SELECT COUNT(*) FROM users WHERE first_name = '" + givenName + "' AND last_name = '" + sn + "' AND phone_number = '" + telephoneNumber + "'";
-            if (mysql_query(conn, select_query.c_str())) {
-                cerr << "MySQL query failed: " << mysql_error(conn) << endl;
-                mysql_close(conn);
-                ldap_msgfree(result);
-                ldap_unbind_ext_s(ld, NULL, NULL);
-                return EXIT_FAILURE;
-            }
-            MYSQL_RES* res = mysql_store_result(conn);
-            if (res == NULL) {
-                cerr << "MySQL store result failed: " << mysql_error(conn) << endl;
-                mysql_close(conn);
-                ldap_msgfree(result);
-                ldap_unbind_ext_s(ld, NULL, NULL);
-                return EXIT_FAILURE;
-            }
-            MYSQL_ROW row = mysql_fetch_row(res);
-            int count = atoi(row[0]);
-            mysql_free_result(res);
-
-            if(count == 0) {
-                string insert_query = "INSERT INTO users (first_name, last_name, phone_number) VALUES ('" + givenName + "', '" + sn + "', '" + telephoneNumber + "')";
-                if (mysql_query(conn, insert_query.c_str())) {
-                    cerr << "MySQL insert failed: " << mysql_error(conn) << endl;
-                    mysql_close(conn);
-                    ldap_msgfree(result);
-                    ldap_unbind_ext_s(ld, NULL, NULL);
-                    return EXIT_FAILURE;
-                }
-                cout << "Inserted: " << givenName << ", " << sn << ", " << telephoneNumber << endl;
-            } 
-            else {
-                cout << "Record already exists: " << givenName << ", " << sn << ", " << telephoneNumber << endl;
-            }
+        if (!givenName.empty() && !sn.empty() && !telephoneNumber.empty() && !mail.empty() && !office.empty() && !description.empty()) {
+            string userPostData = "givenName=" + givenName + "&sn=" + sn + "&telephoneNumber=" + telephoneNumber +
+                                  "&mail=" + mail + "&office=" + office + "&description=" + description;
+            sendDataToServlet("http://localhost:8080/backend_war_exploded/UserDataServlet", userPostData);
+            cout << "User data sent to UserDataServlet: " << givenName << ", " << sn << ", " << telephoneNumber << ", " << mail << ", " << office << ", " << description << endl;
         }
-        cout << "------------------------------------" << endl;
     }
 
-    mysql_close(conn);
-    ber_free(ber, 0);
+    ldap_msgfree(result);
+
+    // Fetch Group Data
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, group_filter, const_cast<char**>(group_attributes), 0, NULL, NULL, NULL, 0, &result);
+    if (rc != LDAP_SUCCESS) {
+        cerr << "LDAP group search failed: " << ldap_err2string(rc) << endl;
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        return EXIT_FAILURE;
+    }
+    cout << "Searching for Group objects..." << endl;
+    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        string groupName, groupMail, groupDescription;
+
+        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
+            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
+                if (strcmp(attribute, "cn") == 0) {
+                    groupName = values[0]->bv_val;
+                }
+                else if (strcmp(attribute, "mail") == 0) {
+                    groupMail = values[0]->bv_val;
+                }
+                else if (strcmp(attribute, "description") == 0) {
+                    groupDescription = values[0]->bv_val;
+                }
+                ldap_value_free_len(values);
+            }
+            ldap_memfree(attribute);
+        }
+
+        if (!groupName.empty() && !groupMail.empty() && !groupDescription.empty()) {
+            string groupPostData = "groupName=" + groupName + "&email=" + groupMail + "&description=" + groupDescription;
+            sendDataToServlet("http://localhost:8080/backend_war_exploded/GroupDataServlet", groupPostData);
+            cout << "Group data sent to GroupDataServlet: " << groupName << ", " << groupMail << ", " << groupDescription << endl;
+        }
+    }
+
+    ldap_msgfree(result);
+
+    // Fetch Computer Data
+    rc = ldap_sasl_bind_s(ld, username, LDAP_SASL_SIMPLE, &cred, NULL, NULL, NULL);
+    if (rc != LDAP_SUCCESS) {
+        cerr << "LDAP bind failed: " << ldap_err2string(rc) << endl;
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        return EXIT_FAILURE;
+    }
+        cout << "Searching for computer objects..." << endl;
+
+        rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, computer_filter, const_cast<char**>(computer_attributes), 0, NULL, NULL, NULL, 0, &result);
+        if (rc != LDAP_SUCCESS) {
+            cerr << "LDAP computer search failed: " << ldap_err2string(rc) << endl;
+            ldap_unbind_ext_s(ld, NULL, NULL);
+            return EXIT_FAILURE;
+        }
+
+        int entryCount = ldap_count_entries(ld, result);
+
+        for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+            string computerName, operatingSystem, description;
+
+            for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
+                if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
+                    if (strcmp(attribute, "cn") == 0) {
+                        computerName = values[0]->bv_val;
+                    }
+                    else if (strcmp(attribute, "operatingSystem") == 0) {
+                        operatingSystem = values[0]->bv_val;
+                    }
+                    else if (strcmp(attribute, "description") == 0) {
+                        description = values[0]->bv_val;
+                    }
+                    ldap_value_free_len(values);
+                }
+                ldap_memfree(attribute);
+            }
+
+            cout << "computer data sent to ComputerDataServlet: " << computerName << ", " << operatingSystem << ", " << description << endl;
+
+            // Send data even if some fields are missing
+            string postData = "computerName=" + computerName + "&operatingSystem=" + (operatingSystem.empty() ? "N/A" : operatingSystem) + "&description=" + (description.empty() ? "N/A" : description);
+            sendDataToServlet("http://localhost:8080/backend_war_exploded/ComputerDataServlet", postData);
+        }
+        ldap_msgfree(result);
+
+    // Fetch OU Data
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, ou_filter, const_cast<char**>(ou_attributes), 0, NULL, NULL, NULL, 0, &result);
+    if (rc != LDAP_SUCCESS) {
+        cerr << "LDAP OU search failed: " << ldap_err2string(rc) << endl;
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        return EXIT_FAILURE;
+    }
+    cout << "Searching for OU objects..." << endl;
+
+    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        string ouName, ouDescription;
+
+        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
+            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
+                if (strcmp(attribute, "ou") == 0) {
+                    ouName = values[0]->bv_val;
+                }
+                else if (strcmp(attribute, "description") == 0) {
+                    ouDescription = values[0]->bv_val;
+                }
+                ldap_value_free_len(values);
+            }
+            ldap_memfree(attribute);
+        }
+
+        if (!ouName.empty() && !ouDescription.empty()) {
+            string ouPostData = "ouName=" + ouName + "&description=" + ouDescription;
+            sendDataToServlet("http://localhost:8080/backend_war_exploded/OUDataServlet", ouPostData);
+            cout << "OU data sent to OUDataServlet: " << ouName << ", " << ouDescription << endl;
+        }
+    }
+
     ldap_msgfree(result);
     ldap_unbind_ext_s(ld, NULL, NULL);
 
-    cout << "LDAP operations completed." << endl;
-    return EXIT_SUCCESS;
+    return 0;
 }

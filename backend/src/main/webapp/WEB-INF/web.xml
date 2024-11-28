@@ -3,12 +3,81 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
          version="6.0">
+
+    <!-- client_servlet -->
     <servlet>
         <servlet-name>UserServlet</servlet-name>
-        <servlet-class>com.example.backend.servlet.UserServlet</servlet-class>
+        <servlet-class>com.example.act_dir.client_servlet.UserServlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>UserServlet</servlet-name>
         <url-pattern>/UserServlet/*</url-pattern>
+    </servlet-mapping>
+<!--    ################################################-->
+    <servlet>
+        <servlet-name>GroupServlet</servlet-name>
+        <servlet-class>com.example.act_dir.client_servlet.GroupServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>GroupServlet</servlet-name>
+        <url-pattern>/GroupServlet/*</url-pattern>
+    </servlet-mapping>
+    <!--    ################################################-->
+    <servlet>
+        <servlet-name>ComputerServlet</servlet-name>
+        <servlet-class>com.example.act_dir.client_servlet.ComputerServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ComputerServlet</servlet-name>
+        <url-pattern>/ComputerServlet/*</url-pattern>
+    </servlet-mapping>
+    <!--    ################################################-->
+    <servlet>
+        <servlet-name>OUServlet</servlet-name>
+        <servlet-class>com.example.act_dir.client_servlet.OUServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>OUServlet</servlet-name>
+        <url-pattern>/OUServlet/*</url-pattern>
+    </servlet-mapping>
+
+
+
+
+    <!-- server_servlet -->
+    <servlet>
+        <servlet-name>UserDataServlet</servlet-name>
+        <servlet-class>com.example.act_dir.server_servlet.UserDataServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>UserDataServlet</servlet-name>
+        <url-pattern>/UserDataServlet/*</url-pattern>
+    </servlet-mapping>
+    <!--    ################################################-->
+    <servlet>
+        <servlet-name>GroupDataServlet</servlet-name>
+        <servlet-class>com.example.act_dir.server_servlet.GroupDataServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>GroupDataServlet</servlet-name>
+        <url-pattern>/GroupDataServlet/*</url-pattern>
+    </servlet-mapping>
+    <!--    ################################################-->
+    <servlet>
+        <servlet-name>OUDataServlet</servlet-name>
+        <servlet-class>com.example.act_dir.server_servlet.OUDataServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>OUDataServlet</servlet-name>
+        <url-pattern>/OUDataServlet/*</url-pattern>
+    </servlet-mapping>
+    <!--    ################################################-->
+    <servlet>
+        <servlet-name>ComputerDataServlet</servlet-name>
+        <servlet-class>com.example.act_dir.server_servlet.ComputerDataServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ComputerDataServlet</servlet-name>
+        <url-pattern>/ComputerDataServlet/*</url-pattern>
     </servlet-mapping>
 </web-app>

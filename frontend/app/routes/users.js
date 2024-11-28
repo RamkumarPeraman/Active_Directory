@@ -4,7 +4,8 @@ export default class UsersRoute extends Route {
   async model() {
     try {
       const response = await fetch('http://localhost:8080/backend_war_exploded/UserServlet');
-      // console.log(response.statusText,"Just for testing----------->")
+
+    //  console.log(response,"Just for testing----------->")
       if (!response.ok) { // !200
         throw new Error(`Failed to fetch users: ${response.statusText}`);
       }

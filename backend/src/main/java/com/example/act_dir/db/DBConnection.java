@@ -1,4 +1,4 @@
-package com.example.backend.db;
+package com.example.act_dir.db;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

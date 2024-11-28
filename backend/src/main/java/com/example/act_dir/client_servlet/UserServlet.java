@@ -1,20 +1,16 @@
-package com.example.backend.servlet;
+package com.example.act_dir.client_servlet;
 
-import com.example.backend.db.DBConnection;
+import com.example.act_dir.db.DBConnection;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
 import java.sql.*;
+import com.example.act_dir.cors_filter.CORS_Filter;
 public class UserServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-
-
-
+        CORS_Filter.setCORSHeaders(response);
 
         response.setContentType("application/json");
         PrintWriter out = response.getWriter();
@@ -28,7 +24,7 @@ public class UserServlet extends HttpServlet {
 
             if (pathInfo == null || pathInfo.equals("/")) {
                 // Fetch all users' ids and first names
-                String query = "SELECT id, first_name FROM users";
+                String query = "SELECT id, first_name FROM user_det";
                 pstmt = conn.prepareStatement(query);
                 rs = pstmt.executeQuery();
 
@@ -48,7 +44,7 @@ public class UserServlet extends HttpServlet {
             }
             else {
                 String userId = pathInfo.substring(1);
-                String query = "SELECT first_name, last_name, phone_number FROM users WHERE id = ?";
+                String query = "SELECT first_name, last_name, phone_number FROM user_det WHERE id = ?";
                 pstmt = conn.prepareStatement(query);
                 pstmt.setString(1, userId);
                 rs = pstmt.executeQuery();

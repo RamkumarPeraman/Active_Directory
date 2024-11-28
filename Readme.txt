@@ -1,7 +1,7 @@
 
 1 - start the LDAP 
     * cd agent
-    * g++ -I/usr/include -L/usr/lib/x86_64-linux-gnu agent.cpp -o agent -lldap -llber -lmysqlclient -lmysqlcppconn
+    * g++ -o agent agent.cpp -lldap -lcurl
     * ./agent
 
 2 - start the server
