@@ -37,7 +37,7 @@ public class ComputerServlet extends HttpServlet {
             query.append(hasCondition ? " AND" : " WHERE").append(" description = ?");
         }
         try(Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
+             PreparedStatement pstmt = conn.prepareStatement(query.toString())){
             int index = 1;
             if (id != null && !id.isEmpty())
                 pstmt.setInt(index++, Integer.parseInt(id));
