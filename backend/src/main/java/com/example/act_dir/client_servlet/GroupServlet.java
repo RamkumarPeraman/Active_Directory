@@ -1,82 +1,95 @@
 package com.example.act_dir.client_servlet;
 
+import com.example.act_dir.cors_filter.CORS_Filter;
 import com.example.act_dir.db.DBConnection;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
 import java.sql.*;
-import com.example.act_dir.cors_filter.CORS_Filter;
 
 public class GroupServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
         CORS_Filter.setCORSHeaders(response);
-
         response.setContentType("application/json");
-        PrintWriter out = response.getWriter();
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
 
-        String pathInfo = request.getPathInfo();
-        try {
-            conn = DBConnection.getConnection();
+        String id = request.getParameter("id");
+        String groupName = request.getParameter("group_name");
+        String email = request.getParameter("email");
+        String description = request.getParameter("description");
 
-            if (pathInfo == null || pathInfo.equals("/")) {
-                // Fetch all groups' ids and names
-                String query = "SELECT id, group_name FROM group_det";
-                pstmt = conn.prepareStatement(query);
-                rs = pstmt.executeQuery();
+        try (PrintWriter out = response.getWriter()) {
+            String jsonData = getGroupDataAsJson(id, groupName, email, description);
+            out.write(jsonData);
+        }
+    }
 
-                StringBuilder groups = new StringBuilder("[");
-                while (rs.next()) {
-                    String id = rs.getString("id");
-                    String groupName = rs.getString("group_name");
-                    groups.append("{\"id\":\"").append(id).append("\",")
-                            .append("\"group_name\":\"").append(groupName).append("\"},");
-                }
-                if (groups.length() > 1) {
-                    groups.setLength(groups.length() - 1);
-                }
-                groups.append("]");
+    public String getGroupDataAsJson(String id, String groupName, String email, String description) {
+        StringBuilder query = new StringBuilder("SELECT id, group_name, email, description FROM group_det");
+        boolean hasCondition = false;
 
-                out.write(groups.toString());
-            } else {
-                String groupId = pathInfo.substring(1);
-                String query = "SELECT group_name, email, description FROM group_det WHERE id = ?";
-                pstmt = conn.prepareStatement(query);
-                pstmt.setString(1, groupId);
-                rs = pstmt.executeQuery();
+        if (id != null && !id.isEmpty()) {
+            query.append(" WHERE id = ?");
+            hasCondition = true;
+        }
+        if (groupName != null && !groupName.isEmpty()) {
+            query.append(hasCondition ? " AND" : " WHERE").append(" group_name = ?");
+            hasCondition = true;
+        }
+        if (email != null && !email.isEmpty()) {
+            query.append(hasCondition ? " AND" : " WHERE").append(" email = ?");
+            hasCondition = true;
+        }
+        if (description != null && !description.isEmpty()) {
+            query.append(hasCondition ? " AND" : " WHERE").append(" description = ?");
+        }
 
-                if (rs.next()) {
-                    String groupName = rs.getString("group_name");
-                    String email = rs.getString("email");
-                    String description = rs.getString("description");
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
+            int index = 1;
+            if (id != null && !id.isEmpty())
+                pstmt.setInt(index++, Integer.parseInt(id));
+            if (groupName != null && !groupName.isEmpty())
+                pstmt.setString(index++, groupName);
+            if (email != null && !email.isEmpty())
+                pstmt.setString(index++, email);
+            if (description != null && !description.isEmpty())
+                pstmt.setString(index++, description);
 
-                    StringBuilder groupDetails = new StringBuilder("{");
-                    groupDetails.append("\"group_name\":\"").append(groupName).append("\",")
-                            .append("\"email\":\"").append(email).append("\",")
-                            .append("\"description\":\"").append(description).append("\"")
-                            .append("}");
-
-                    out.write(groupDetails.toString());
-                } else {
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                    out.write("{\"error\":\"Group not found\"}");
-                }
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return buildJsonData(rs, id);
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            out.write("{\"error\":\"Database error\"}");
-        } finally {
-            try {
-                if (rs != null) rs.close();
-                if (pstmt != null) pstmt.close();
-                if (conn != null) conn.close();
-            } catch (SQLException se) {
-                se.printStackTrace();
-            }
+            return "{\"error\":\"Database error\"}";
         }
+    }
+
+    public String buildJsonData(ResultSet rs, String id) throws SQLException {
+        StringBuilder jsonData = new StringBuilder();
+        if (id != null && !id.isEmpty() && rs.next()) {
+            jsonData.append("{")
+                    .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
+                    .append("\"group_name\":\"").append(rs.getString("group_name")).append("\", ")
+                    .append("\"email\":\"").append(rs.getString("email")).append("\", ")
+                    .append("\"description\":\"").append(rs.getString("description"))
+                    .append("\"}");
+        } else {
+            jsonData.append("[");
+            while (rs.next()) {
+                jsonData.append("{")
+                        .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
+                        .append("\"group_name\":\"").append(rs.getString("group_name")).append("\", ")
+                        .append("\"email\":\"").append(rs.getString("email")).append("\", ")
+                        .append("\"description\":\"").append(rs.getString("description"))
+                        .append("\"},");
+            }
+            if (jsonData.length() > 1) {
+                jsonData.setLength(jsonData.length() - 1);  // Remove last comma
+            }
+            jsonData.append("]");
+        }
+
+        return jsonData.toString();
     }
 }

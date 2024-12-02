@@ -10,7 +10,6 @@ void sendDataToServlet(const string& servletUrl, const string& postData) {
     CURLcode res;
     curl_global_init(CURL_GLOBAL_DEFAULT);
     curl = curl_easy_init();
-
     if(curl) {
         // Set curl options
         curl_easy_setopt(curl, CURLOPT_URL, servletUrl.c_str());
@@ -112,6 +111,7 @@ int main() {
                                   "&mail=" + mail + "&office=" + office + "&description=" + description;
             sendDataToServlet("http://localhost:8080/backend_war_exploded/UserDataServlet", userPostData);
             cout << "User data sent to UserDataServlet: " << givenName << ", " << sn << ", " << telephoneNumber << ", " << mail << ", " << office << ", " << description << endl;
+            
         }
     }
 
@@ -172,17 +172,13 @@ int main() {
         int entryCount = ldap_count_entries(ld, result);
 
         for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-            string computerName, physicalDeliveryOfficeName, description;
+            string computerName, description;
 
             for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
                 if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
                     if (strcmp(attribute, "cn") == 0) {
                         computerName = values[0]->bv_val;
-                    }
-                    else if (strcmp(attribute, "physicalDeliveryOfficeName") == 0) {
-                        physicalDeliveryOfficeName = values[0]->bv_val;
-                    }
-                    else if (strcmp(attribute, "description") == 0) {
+                    } else if (strcmp(attribute, "description") == 0) {
                         description = values[0]->bv_val;
                     }
                     ldap_value_free_len(values);
@@ -190,12 +186,13 @@ int main() {
                 ldap_memfree(attribute);
             }
 
-            cout << "computer data sent to ComputerDataServlet: " << computerName << ", " << physicalDeliveryOfficeName << ", " << description << endl;
-
-            // Send data even if some fields are missing
-            string postData = "computerName=" + computerName + "&physicalDeliveryOfficeName=" + (physicalDeliveryOfficeName.empty() ? "N/A" : physicalDeliveryOfficeName) + "&description=" + (description.empty() ? "N/A" : description);
-            sendDataToServlet("http://localhost:8080/backend_war_exploded/ComputerDataServlet", postData);
+            if (!computerName.empty() && !description.empty()) {
+                string computerPostData = "computerName=" + computerName + "&description=" + description;
+                sendDataToServlet("http://localhost:8080/backend_war_exploded/ComputerDataServlet", computerPostData);
+                cout << "Computer data sent to ComputerDataServlet: " << computerName << ", " << description << endl;
+            }
         }
+
         ldap_msgfree(result);
 
     // Fetch OU Data
@@ -209,7 +206,6 @@ int main() {
 
     for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
         string ouName, ouDescription;
-
         for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
             if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
                 if (strcmp(attribute, "ou") == 0) {
@@ -222,14 +218,12 @@ int main() {
             }
             ldap_memfree(attribute);
         }
-
         if (!ouName.empty() && !ouDescription.empty()) {
             string ouPostData = "ouName=" + ouName + "&description=" + ouDescription;
             sendDataToServlet("http://localhost:8080/backend_war_exploded/OUDataServlet", ouPostData);
             cout << "OU data sent to OUDataServlet: " << ouName << ", " << ouDescription << endl;
         }
     }
-
     ldap_msgfree(result);
     ldap_unbind_ext_s(ld, NULL, NULL);
 

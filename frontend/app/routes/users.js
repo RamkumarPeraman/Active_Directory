@@ -7,20 +7,15 @@ export default class UsersRoute extends Route {
         'http://localhost:8080/backend_war_exploded/UserServlet',
       );
 
-      //  console.log(response,"Just for testing----------->")
       if (!response.ok) {
-        // !200
         throw new Error(`Failed to fetch users: ${response.statusText}`);
       }
-      const users = await response.json();
-      // console.log(users ,"user");
-      return users;
+      return await response.json();
     } catch (error) {
       console.error('Error fetching users:', error);
       return [];
     }
   }
-
   setupController(controller, model) {
     super.setupController(controller, model);
     controller.users = model;

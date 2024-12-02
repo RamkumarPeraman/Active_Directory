@@ -2,20 +2,35 @@ import Controller from '@ember/controller';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 
-export default class GroupsController extends Controller {
+export default class GroupController extends Controller {
   @tracked groups = [];
   @tracked selectedGroup = null;
+
+  @action
+  async fetchGroups(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const url = `http://localhost:8080/backend_war_exploded/GroupServlet?${query}`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch groups: ${response.statusText}`);
+      }
+      this.groups = await response.json();
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      this.groups = [];
+    }
+  }
 
   @action
   async showGroupDetails(groupId) {
     try {
       const response = await fetch(
-        `http://localhost:8080/backend_war_exploded/GroupServlet/${groupId}`,
+        `http://localhost:8080/backend_war_exploded/GroupServlet?id=${groupId}`,
       );
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch group details: ${response.statusText}`,
-        );
+        throw new Error(`Failed to fetch group details: ${response.statusText}`);
       }
       this.selectedGroup = await response.json();
     } catch (error) {

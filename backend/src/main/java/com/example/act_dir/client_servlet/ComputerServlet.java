@@ -1,81 +1,86 @@
 package com.example.act_dir.client_servlet;
 
+import com.example.act_dir.cors_filter.CORS_Filter;
 import com.example.act_dir.db.DBConnection;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
 import java.sql.*;
-import com.example.act_dir.cors_filter.CORS_Filter;
+
 public class ComputerServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
         CORS_Filter.setCORSHeaders(response);
-
         response.setContentType("application/json");
-        PrintWriter out = response.getWriter();
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
 
-        String pathInfo = request.getPathInfo();
-        try {
-            conn = DBConnection.getConnection();
+        String id = request.getParameter("id");
+        String computerName = request.getParameter("computer_name");
+        String description = request.getParameter("description");
 
-            if (pathInfo == null || pathInfo.equals("/")) {
-                // Fetch all computers' ids and names
-                String query = "SELECT id, computer_name FROM computer_det";
-                pstmt = conn.prepareStatement(query);
-                rs = pstmt.executeQuery();
+        try (PrintWriter out = response.getWriter()) {
+            String jsonData = getComputerDataAsJson(id, computerName, description);
+            out.write(jsonData);
+        }
+    }
+    public String getComputerDataAsJson(String id, String computerName, String description) {
+        StringBuilder query = new StringBuilder("SELECT id, computer_name, description FROM computer_det");
+        boolean hasCondition = false;
+        if(id != null && !id.isEmpty()) {
+            query.append(" WHERE id = ?");
+            hasCondition = true;
+        }
+        if(computerName != null && !computerName.isEmpty()) {
+            query.append(hasCondition ? " AND" : " WHERE").append(" computer_name = ?");
+            hasCondition = true;
+        }
+        if(description != null && !description.isEmpty()) {
+            query.append(hasCondition ? " AND" : " WHERE").append(" description = ?");
+        }
+        try(Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
+            int index = 1;
+            if (id != null && !id.isEmpty())
+                pstmt.setInt(index++, Integer.parseInt(id));
+            if (computerName != null && !computerName.isEmpty())
+                pstmt.setString(index++, computerName);
+            if (description != null && !description.isEmpty())
+                pstmt.setString(index++, description);
 
-                StringBuilder computers = new StringBuilder("[");
-                while (rs.next()) {
-                    String id = rs.getString("id");
-                    String computerName = rs.getString("computer_name");
-                    computers.append("{\"id\":\"").append(id).append("\",")
-                            .append("\"computer_name\":\"").append(computerName).append("\"},");
-                }
-                if (computers.length() > 1) {
-                    computers.setLength(computers.length() - 1);
-                }
-                computers.append("]");
-
-                out.write(computers.toString());
-            } else {
-                String computerId = pathInfo.substring(1);
-                String query = "SELECT computer_name, computer_location, description FROM computer_det WHERE id = ?";
-                pstmt = conn.prepareStatement(query);
-                pstmt.setString(1, computerId);
-                rs = pstmt.executeQuery();
-
-                if (rs.next()) {
-                    String computerName = rs.getString("computer_name");
-                    String computerLocation = rs.getString("computer_location");
-                    String description = rs.getString("description");
-
-                    StringBuilder computerDetails = new StringBuilder("{");
-                    computerDetails.append("\"computer_name\":\"").append(computerName).append("\",")
-                            .append("\"computer_location\":\"").append(computerLocation).append("\",")
-                            .append("\"description\":\"").append(description).append("\"")
-                            .append("}");
-
-                    out.write(computerDetails.toString());
-                } else {
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                    out.write("{\"error\":\"Computer not found\"}");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            out.write("{\"error\":\"Database error\"}");
-        } finally {
-            try {
-                if (rs != null) rs.close();
-                if (pstmt != null) pstmt.close();
-                if (conn != null) conn.close();
-            } catch (SQLException se) {
-                se.printStackTrace();
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return buildJsonData(rs, id);
             }
         }
+
+        catch (SQLException e) {
+            e.printStackTrace();
+            return "{\"error\":\"Database error\"}";
+        }
+    }
+
+    public String buildJsonData(ResultSet rs, String id) throws SQLException {
+        StringBuilder jsonData = new StringBuilder();
+        if (id != null && !id.isEmpty() && rs.next()) {
+            jsonData.append("{")
+                    .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
+                    .append("\"computer_name\":\"").append(rs.getString("computer_name")).append("\", ")
+                    .append("\"description\":\"").append(rs.getString("description"))
+                    .append("\"}");
+        }
+        else {
+            jsonData.append("[");
+            while (rs.next()) {
+                jsonData.append("{")
+                        .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
+                        .append("\"computer_name\":\"").append(rs.getString("computer_name")).append("\", ")
+                        .append("\"description\":\"").append(rs.getString("description"))
+                        .append("\"},");
+            }
+            if(jsonData.length() > 1) {
+                jsonData.setLength(jsonData.length() - 1);
+            }
+            jsonData.append("]");
+        }
+
+        return jsonData.toString();
     }
 }

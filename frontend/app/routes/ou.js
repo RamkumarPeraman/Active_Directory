@@ -1,20 +1,21 @@
 import Route from '@ember/routing/route';
 
-export default class OUsRoute extends Route {
+export default class OURoute extends Route {
   async model() {
     try {
-      const response = await fetch('http://localhost:8080/backend_war_exploded/OUServlet');
+      const response = await fetch(
+        'http://localhost:8080/backend_war_exploded/OUServlet',
+      );
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch OUs: ${response.statusText}`);
+        throw new Error(`Failed to fetch organizational units: ${response.statusText}`);
       }
-      const ous = await response.json();
-      return ous;
+      return await response.json();
     } catch (error) {
-      console.error('Error fetching OUs:', error);
+      console.error('Error fetching organizational units:', error);
       return [];
     }
   }
-
   setupController(controller, model) {
     super.setupController(controller, model);
     controller.ous = model;
