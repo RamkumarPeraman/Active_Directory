@@ -3,7 +3,7 @@
   <div class="tiles">
     {{#each this.users as |user|}}
       <div class="tile">
-        <a href="#" {{on "click" (fn this.showUserDetails user.id)}}>{{user.first_name}}</a>
+        <a href="#" {{on "click" (fn this.showUserDetails user.id)}}><img src="../asset/user.png" alt="Home" class="user_icon u_icon" /><br> {{user.first_name}}</a>
         <p></p>
       </div>
     {{else}}

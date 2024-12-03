@@ -3,7 +3,7 @@
   <div class="tiles">
     {{#each this.groups as |group|}}
       <div class="tile">
-        <a href="#" {{on "click" (fn this.showGroupDetails group.id)}}>{{group.group_name}}</a>
+        <a href="#" {{on "click" (fn this.showGroupDetails group.id)}}><img src="../asset/group.png" alt="Home" class="ou_icon o_icon" /><br>{{group.group_name}}</a>
       </div>
     {{else}}
       <p>No groups found.</p>

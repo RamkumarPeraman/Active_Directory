@@ -100,6 +100,47 @@ body {
   color: #af4c4c;
 }
 
+/* Icons */
+.act_icon{
+  max-width: 150px;
+  margin-left: -10px;
+  height: 100px;
+}
+.home_icon{
+  padding-bottom: 5px;
+  margin-top: 2px;
+  max-width: 50px; 
+}
+.users_icon{
+  padding-bottom: 5px;
+  margin-top: 2px;
+  max-width: 50px; 
+}
+.ou_icon{
+  padding-bottom: 5px;
+  max-width: 50px;
+}
+.comp_icon{
+  padding-bottom: 5px;
+  max-width: 50px;
+}
+.groups_icon{
+  padding-bottom: 5px;
+  max-width: 60px; 
+}
+
+.u_icon{
+  max-width: 80px;
+}
+.g_icon{
+  max-width: 80px;
+}
+.c_icon{
+  max-width: 80px;
+}
+.o_icon{
+  max-width: 80px;
+}
 .popup {
   position: fixed;
   top: 0;

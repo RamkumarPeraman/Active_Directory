@@ -15,17 +15,16 @@ public class GroupServlet extends HttpServlet {
 
         String id = request.getParameter("id");
         String groupName = request.getParameter("group_name");
-        String email = request.getParameter("email");
         String description = request.getParameter("description");
 
         try (PrintWriter out = response.getWriter()) {
-            String jsonData = getGroupDataAsJson(id, groupName, email, description);
+            String jsonData = getGroupDataAsJson(id, groupName, description);
             out.write(jsonData);
         }
     }
 
-    public String getGroupDataAsJson(String id, String groupName, String email, String description) {
-        StringBuilder query = new StringBuilder("SELECT id, group_name, email, description FROM group_det");
+    public String getGroupDataAsJson(String id, String groupName, String description) {
+        StringBuilder query = new StringBuilder("SELECT id, group_name, description FROM group_det");
         boolean hasCondition = false;
 
         if (id != null && !id.isEmpty()) {
@@ -34,10 +33,6 @@ public class GroupServlet extends HttpServlet {
         }
         if (groupName != null && !groupName.isEmpty()) {
             query.append(hasCondition ? " AND" : " WHERE").append(" group_name = ?");
-            hasCondition = true;
-        }
-        if (email != null && !email.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" email = ?");
             hasCondition = true;
         }
         if (description != null && !description.isEmpty()) {
@@ -51,8 +46,6 @@ public class GroupServlet extends HttpServlet {
                 pstmt.setInt(index++, Integer.parseInt(id));
             if (groupName != null && !groupName.isEmpty())
                 pstmt.setString(index++, groupName);
-            if (email != null && !email.isEmpty())
-                pstmt.setString(index++, email);
             if (description != null && !description.isEmpty())
                 pstmt.setString(index++, description);
 
@@ -71,7 +64,6 @@ public class GroupServlet extends HttpServlet {
             jsonData.append("{")
                     .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
                     .append("\"group_name\":\"").append(rs.getString("group_name")).append("\", ")
-                    .append("\"email\":\"").append(rs.getString("email")).append("\", ")
                     .append("\"description\":\"").append(rs.getString("description"))
                     .append("\"}");
         } else {
@@ -80,12 +72,11 @@ public class GroupServlet extends HttpServlet {
                 jsonData.append("{")
                         .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
                         .append("\"group_name\":\"").append(rs.getString("group_name")).append("\", ")
-                        .append("\"email\":\"").append(rs.getString("email")).append("\", ")
                         .append("\"description\":\"").append(rs.getString("description"))
                         .append("\"},");
             }
             if (jsonData.length() > 1) {
-                jsonData.setLength(jsonData.length() - 1);  // Remove last comma
+                jsonData.setLength(jsonData.length() - 1);
             }
             jsonData.append("]");
         }

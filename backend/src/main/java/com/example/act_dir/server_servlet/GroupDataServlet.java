@@ -14,14 +14,13 @@ import jakarta.servlet.http.HttpServletResponse;
 public class GroupDataServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String groupName = request.getParameter("groupName");
-        String email = request.getParameter("email");
         String description = request.getParameter("description");
 
         try (Connection conn = DBConnection.getConnection()) {
-            if (groupExists(conn, groupName, email, description)) {
+            if (groupExists(conn, groupName, description)) {
                 response.getWriter().println("Group data already exists!");
             } else {
-                if (insertGroup(conn, groupName, email, description)) {
+                if (insertGroup(conn, groupName, description)) {
                     response.getWriter().println("Group data inserted successfully!");
                 } else {
                     response.getWriter().println("Group data insertion failed!");
@@ -41,12 +40,11 @@ public class GroupDataServlet extends HttpServlet {
         response.getWriter().println("<html><body><h1>Group Data Inserted</h1></body></html>");
     }
 
-    private boolean groupExists(Connection conn, String groupName, String email, String description) throws SQLException {
-        String checkSql = "SELECT COUNT(*) FROM group_det WHERE group_name = ? AND email = ? AND description = ?";
+    private boolean groupExists(Connection conn, String groupName, String description) throws SQLException {
+        String checkSql = "SELECT COUNT(*) FROM group_det WHERE group_name = ? AND description = ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
             checkStmt.setString(1, groupName);
-            checkStmt.setString(2, email);
-            checkStmt.setString(3, description);
+            checkStmt.setString(2, description);
 
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
@@ -57,12 +55,11 @@ public class GroupDataServlet extends HttpServlet {
         return false;
     }
 
-    private boolean insertGroup(Connection conn, String groupName, String email, String description) throws SQLException {
-        String insertSql = "INSERT INTO group_det (group_name, email, description) VALUES (?, ?, ?)";
+    private boolean insertGroup(Connection conn, String groupName, String description) throws SQLException {
+        String insertSql = "INSERT INTO group_det (group_name, description) VALUES (?, ?)";
         try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
             insertStmt.setString(1, groupName);
-            insertStmt.setString(2, email);
-            insertStmt.setString(3, description);
+            insertStmt.setString(2, description);
 
             int rowsInserted = insertStmt.executeUpdate();
             return rowsInserted > 0;

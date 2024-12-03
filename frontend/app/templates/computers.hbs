@@ -3,7 +3,7 @@
   <div class="tiles">
     {{#each this.computers as |computer|}}
       <div class="tile">
-        <a href="#" {{on "click" (fn this.showComputerDetails computer.id)}}>{{computer.computer_name}}</a>
+        <a href="#" {{on "click" (fn this.showComputerDetails computer.id)}}><img src="../asset/desktop.png" alt="Home" class="groups_icon" /><br> {{computer.computer_name}}</a>
         <p></p>
       </div>
     {{else}}

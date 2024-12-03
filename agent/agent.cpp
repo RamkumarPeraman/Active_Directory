@@ -4,7 +4,7 @@
 #include <cstring>
 #include <curl/curl.h>
 #include <vector>
-
+#include <unistd.h> 
 using namespace std;
 
 // Data send to servlet 
@@ -276,7 +276,6 @@ int main(){
     }
 
 
-
     const char* ou_filter = "(objectClass=organizationalUnit)";
     const char* ou_attributes[] = {"ou", NULL};
 
@@ -308,13 +307,17 @@ int main(){
         }
     }
     ldap_msgfree(result);
-    for(string ou_base_dn : ou_names){
-        // cout << "OU Name: " << name << endl;
-        fetchOU(ld,ou_base_dn.c_str(),rc);
+
+    while(true){
+        for(string ou_base_dn : ou_names){
+            // cout << "OU Name: " << name << endl;
+            fetchOU(ld,ou_base_dn.c_str(),rc);
+        }
+        // fetchHometData(ld,base_dn,rc);
+        fetchUsers(ld,user_base_dn,rc);
+        fetchComputers(ld, comp_base_dn, rc);
+        sleep(5);
     }
-    // fetchHometData(ld,base_dn,rc);
-    fetchUsers(ld,user_base_dn,rc);
-    fetchComputers(ld, comp_base_dn, rc);
 
     ldap_unbind_ext_s(ld, NULL, NULL);
     return EXIT_SUCCESS;
