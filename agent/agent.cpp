@@ -3,10 +3,16 @@
 #include <cstdlib>
 #include <cstring>
 #include <curl/curl.h>
+#include <vector>
 
 using namespace std;
 
 // Data send to servlet 
+
+LDAPMessage* result, *entry;           
+BerElement* ber;                       
+char* attribute;                       
+struct berval** values; 
 
 void sendDataToServlet(const string& servletUrl, const string& postData) {
     CURL *curl;
@@ -30,11 +36,6 @@ void sendDataToServlet(const string& servletUrl, const string& postData) {
 
 // Fetch User Data
 void fetchUserData(LDAP* ld, const char* base_dn, int rc) {
-    LDAPMessage* result, *entry;           
-    BerElement* ber;                       
-    char* attribute;                       
-    struct berval** values; 
-
     const char* user_filter = "(objectClass=user)";
     const char* user_attributes[] = {"givenName", "sn", "telephoneNumber", "mail", "physicalDeliveryOfficeName", "description", NULL};
 
@@ -88,10 +89,6 @@ void fetchUserData(LDAP* ld, const char* base_dn, int rc) {
 
 // fetch organizationalUnit
 void fetchOUData(LDAP* ld, const char* base_dn, int rc){
-    LDAPMessage* result, *entry;           
-    BerElement* ber;                       
-    char* attribute;                       
-    struct berval** values; 
 
     const char* ou_filter = "(objectClass=organizationalUnit)";
     const char* ou_attributes[] = {"ou", "description", NULL};
@@ -128,11 +125,7 @@ void fetchOUData(LDAP* ld, const char* base_dn, int rc){
 }
 
 // Fetch GroupData 
-void fetchGroupData(LDAP* ld, const char* base_dn, int rc){
-    LDAPMessage* result, *entry;           
-    BerElement* ber;                       
-    char* attribute;                       
-    struct berval** values;   
+void fetchGroupData(LDAP* ld, const char* base_dn, int rc){  
 
     const char* group_filter = "(objectClass=group)";  
     const char* group_attributes[] = {"cn", "description", NULL};
@@ -173,10 +166,6 @@ void fetchGroupData(LDAP* ld, const char* base_dn, int rc){
 
 // fetch ComputerData
 void fetchComputerData(LDAP* ld, const char* base_dn, int rc){
-    LDAPMessage* result, *entry;           
-    BerElement* ber;                       
-    char* attribute;                       
-    struct berval** values; 
 
     const char* computer_filter = "(objectClass=computer)";
     const char* computer_attributes[] = {"cn", "physicalDeliveryOfficeName", "description", NULL};
@@ -254,7 +243,7 @@ void fetchComputers(LDAP* ld, const char* base_dn, int rc){
 
 // Main function
 int main(){
-    const char* ldap_server = "ldap://10.94.74.195"; // win server ip
+    const char* ldap_server = "ldap://10.94.73.182"; // win server ip
     const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";  
     const char* password = "Ram@123";
     const char* base_dn = "dc=zoho,dc=com"; 
@@ -285,11 +274,47 @@ int main(){
         ldap_unbind_ext_s(ld, NULL, NULL);
         return EXIT_FAILURE;
     }
+
+
+
+    const char* ou_filter = "(objectClass=organizationalUnit)";
+    const char* ou_attributes[] = {"ou", NULL};
+
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, ou_filter, const_cast<char**>(ou_attributes), 0, NULL, NULL, NULL, 0, &result);
+    if (rc != LDAP_SUCCESS) {
+        cerr << "LDAP OU search failed: " << ldap_err2string(rc) << endl;
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        return -1;
+    }
+    cout << "Searching for OU objects..." << endl;
+    vector<string> ou_names;
+
+    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        string ouName;
+        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
+            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
+                if (strcmp(attribute, "ou") == 0) {
+                    ouName = values[0]->bv_val;
+                }
+                ldap_value_free_len(values);
+            }
+            ldap_memfree(attribute);
+        }
+        if (!ouName.empty()) {
+            ou_names.push_back("OU="+ouName+",DC=zoho,DC=com");
+        }
+        if (ber != nullptr) {
+            ber_free(ber, 0);
+        }
+    }
+    ldap_msgfree(result);
+    for (string name : ou_names) {
+        // cout << "OU Name: " << name << endl;
+        fetchOU(ld,name.c_str(),rc);
+    }
     // fetchHometData(ld,base_dn,rc);
     fetchUsers(ld,user_base_dn,rc);
     fetchComputers(ld, comp_base_dn, rc);
-    fetchOU(ld,ou_base_dn,rc);
-
 
     ldap_unbind_ext_s(ld, NULL, NULL);
     return EXIT_SUCCESS;
