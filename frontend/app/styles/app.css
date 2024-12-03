@@ -7,6 +7,9 @@ body {
   box-sizing: border-box;
 }
 
+.head_name{
+  height: 60px;
+}
 .container {
   display: flex;
   width: 100%;
@@ -17,8 +20,9 @@ body {
 }
 
 .heading {
-  color: rgb(0 0 0);
+  color: rgb(0, 0, 0);
   text-align: center;
+  margin-top: 100px;
 }
 
 .sidebar {
@@ -141,6 +145,10 @@ body {
 .o_icon{
   max-width: 80px;
 }
+
+
+
+
 .popup {
   position: fixed;
   top: 0;
