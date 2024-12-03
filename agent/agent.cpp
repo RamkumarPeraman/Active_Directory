@@ -249,7 +249,7 @@ int main(){
     const char* base_dn = "dc=zoho,dc=com"; 
     const char* user_base_dn = "CN=Users,dc=zoho,dc=com";   
     const char* comp_base_dn = "CN=Computers,dc=zoho,dc=com"; 
-    const char* ou_base_dn = "OU=zoho_org,dc=zoho,dc=com"; 
+    // const char* ou_base_dn = "OU=zoho_org,dc=zoho,dc=com"; 
 
     LDAP* ld;
     int rc;  
@@ -308,9 +308,9 @@ int main(){
         }
     }
     ldap_msgfree(result);
-    for (string name : ou_names) {
+    for(string ou_base_dn : ou_names){
         // cout << "OU Name: " << name << endl;
-        fetchOU(ld,name.c_str(),rc);
+        fetchOU(ld,ou_base_dn.c_str(),rc);
     }
     // fetchHometData(ld,base_dn,rc);
     fetchUsers(ld,user_base_dn,rc);
