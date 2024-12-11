@@ -8,7 +8,8 @@
         <a href="#" {{on "click" (fn this.showOUDetails ou.id)}}><img src="../asset/ou.png" alt="Home" class="ou_icon o_icon" /><br>{{ou.ou_name}}</a>
       </div>
     {{else}}
-      <p>No organizational units found.</p>
+      <h3 class="not_found">No OU's found</h3>
+      <img src="../asset/empty.png" alt="Home" class="empty" />
     {{/each}}
   </div>
   {{#if this.selectedOU}}

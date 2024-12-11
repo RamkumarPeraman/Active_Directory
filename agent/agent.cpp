@@ -1,19 +1,36 @@
 #include <iostream>
+#include <string>
 #include <ldap.h>
+#include <ctime>
+#include <unistd.h>
+#include <curl/curl.h>
+#include <unordered_set>
+#include <vector>
 #include <cstdlib>
 #include <cstring>
-#include <curl/curl.h>
-#include <vector>
-#include <unistd.h> 
+
 using namespace std;
 
-// Data send to servlet 
+// LDAP connection
+const char* ldap_server = "ldap://10.94.73.155";
+const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";
+const char* password = "Ram@123";
+const char* comp_base_dn = "CN=Computers,DC=zoho,DC=com";
+const char* user_base_dn = "CN=Users,DC=zoho,DC=com";
+vector<string> ou_names;
 
-LDAPMessage* result, *entry;           
-BerElement* ber;                       
-char* attribute;                       
+// Global variables
+time_t lastCheckedTime = 0;
+char* attribute; 
+BerElement* ber;  
+LDAPMessage* result, *entry;  
 struct berval** values; 
+unordered_set<string> processedEntries;
+LDAP* ld;
+int rc;
+bool initialFetch = true;
 
+// Data send to servlet
 void sendDataToServlet(const string& servletUrl, const string& postData) {
     CURL *curl;
     CURLcode res;
@@ -33,234 +50,13 @@ void sendDataToServlet(const string& servletUrl, const string& postData) {
     curl_global_cleanup();
 }
 
-
-// Fetch User Data
-void fetchUserData(LDAP* ld, const char* base_dn, int rc) {
-    const char* user_filter = "(objectClass=user)";
-    const char* user_attributes[] = {"givenName", "sn", "telephoneNumber", "mail", "physicalDeliveryOfficeName", "description", NULL};
-
-
-    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, user_filter, const_cast<char**>(user_attributes), 0, NULL, NULL, NULL, 0, &result);
-    if (rc != LDAP_SUCCESS) {
-        cerr << "LDAP user search failed: " << ldap_err2string(rc) << endl;
-        return;
-    }
-    cout << "Searching for User objects..." << endl;
-
-    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-        string givenName, sn, telephoneNumber, mail, office, description;
-
-        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
-            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
-                if (strcmp(attribute, "givenName") == 0) {
-                    givenName = values[0]->bv_val;
-                } 
-                else if (strcmp(attribute, "sn") == 0) {
-                    sn = values[0]->bv_val;
-                } 
-                else if (strcmp(attribute, "telephoneNumber") == 0) {
-                    telephoneNumber = values[0]->bv_val;
-                }
-                else if (strcmp(attribute, "mail") == 0) {
-                    mail = values[0]->bv_val;  
-                }
-                else if (strcmp(attribute, "physicalDeliveryOfficeName") == 0) {
-                    office = values[0]->bv_val;
-                }
-                else if (strcmp(attribute, "description") == 0) {
-                    description = values[0]->bv_val;
-                }
-                ldap_value_free_len(values);
-            }
-            ldap_memfree(attribute);
-        }
-
-        if (!givenName.empty() && !sn.empty() && !telephoneNumber.empty() && !mail.empty() && !office.empty() && !description.empty()) {
-            string userPostData = "givenName=" + givenName + "&sn=" + sn + "&telephoneNumber=" + telephoneNumber +
-                                  "&mail=" + mail + "&office=" + office + "&description=" + description;
-            sendDataToServlet("http://localhost:8080/backend_war_exploded/UserDataServlet", userPostData);
-            cout << "User data sent to UserDataServlet: " << givenName << ", " << sn << ", " << telephoneNumber << ", " << mail << ", " << office << ", " << description << endl;
-        }
-    }
-
-    ldap_msgfree(result);
-}
-
-
-// fetch organizationalUnit
-void fetchOUData(LDAP* ld, const char* base_dn, int rc){
-
-    const char* ou_filter = "(objectClass=organizationalUnit)";
-    const char* ou_attributes[] = {"ou", "description", NULL};
-
-    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, ou_filter, const_cast<char**>(ou_attributes), 0, NULL, NULL, NULL, 0, &result);
-    if (rc != LDAP_SUCCESS) {
-        cerr << "LDAP OU search failed: " << ldap_err2string(rc) << endl;
-        ldap_unbind_ext_s(ld, NULL, NULL);
-        return;
-    }
-    cout << "Searching for OU objects..." << endl;
-    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-        string ouName, ouDescription;
-        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
-            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
-                if (strcmp(attribute, "ou") == 0) {
-                    ouName = values[0]->bv_val;
-                }
-                else if (strcmp(attribute, "description") == 0) {
-                    ouDescription = values[0]->bv_val;
-                }
-                ldap_value_free_len(values);
-            }
-            ldap_memfree(attribute);
-        }
-        if (!ouName.empty() && !ouDescription.empty()) {
-            string ouPostData = "ouName=" + ouName + "&description=" + ouDescription;
-            sendDataToServlet("http://localhost:8080/backend_war_exploded/OUDataServlet", ouPostData);
-            cout << "OU data sent to OUDataServlet: " << ouName << ", " << ouDescription << endl;
-        }
-    }
-    ldap_msgfree(result);
-
-}
-
-// Fetch GroupData 
-void fetchGroupData(LDAP* ld, const char* base_dn, int rc){  
-
-    const char* group_filter = "(objectClass=group)";  
-    const char* group_attributes[] = {"cn", "description", NULL};
-
-    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, group_filter, const_cast<char**>(group_attributes), 0, NULL, NULL, NULL, 0, &result);
-    if (rc != LDAP_SUCCESS) {
-        cerr << "LDAP Group search failed: " << ldap_err2string(rc) << endl;
-        ldap_unbind_ext_s(ld, NULL, NULL);
-        return;
-    }
-
-    cout << "Searching for Group objects..." << endl;
-    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-        string groupName, groupDescription;
-
-        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
-            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
-                if (strcmp(attribute, "cn") == 0) {
-                    groupName = values[0]->bv_val;
-                }
-                else if (strcmp(attribute, "description") == 0) {
-                    groupDescription = values[0]->bv_val;
-                }
-                ldap_value_free_len(values);
-            }
-            ldap_memfree(attribute);
-        }
-
-        if (!groupName.empty()&& !groupDescription.empty()) {
-            string groupPostData = "groupName=" + groupName + "&description=" + groupDescription;
-            sendDataToServlet("http://localhost:8080/backend_war_exploded/GroupDataServlet", groupPostData);
-            cout << "Group data sent to GroupDataServlet: " << groupName << ", " << groupDescription << endl;
-        }
-    }
-
-    ldap_msgfree(result);
-}
-
-// fetch ComputerData
-void fetchComputerData(LDAP* ld, const char* base_dn, int rc){
-
-    const char* computer_filter = "(objectClass=computer)";
-    const char* computer_attributes[] = {"cn", "physicalDeliveryOfficeName", "description", NULL};
-
-    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, computer_filter, const_cast<char**>(computer_attributes), 0, NULL, NULL, NULL, 0, &result);
-    if (rc != LDAP_SUCCESS) {
-        cerr << "LDAP computer search failed: " << ldap_err2string(rc) << endl;
-        ldap_unbind_ext_s(ld, NULL, NULL);
-        return;
-    }
-
-    for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-        string computerName, description;
-
-        for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
-            if ((values = ldap_get_values_len(ld, entry, attribute)) != NULL) {
-                if (strcmp(attribute, "cn") == 0) {
-                    computerName = values[0]->bv_val;
-                } else if (strcmp(attribute, "description") == 0) {
-                    description = values[0]->bv_val;
-                }
-                ldap_value_free_len(values);
-            }
-            ldap_memfree(attribute);
-        }
-
-        if (!computerName.empty() && !description.empty()) {
-            string computerPostData = "computerName=" + computerName + "&description=" + description;
-            sendDataToServlet("http://localhost:8080/backend_war_exploded/ComputerDataServlet", computerPostData);
-            cout << "Computer data sent to ComputerDataServlet: " << computerName << ", " << description << endl;
-        }
-    }
-
-    ldap_msgfree(result);
-}
-
-// Fetch all datas 
-void fetchHometData(LDAP* ld, const char* base_dn, int rc){
-
-    fetchUserData(ld, base_dn, rc);
-    fetchOUData(ld,base_dn,rc);
-    fetchGroupData(ld,base_dn,rc);
-    fetchComputerData(ld,base_dn,rc);
-}
-
-
-// Fetch all computers 
-void fetchOU(LDAP* ld, const char* base_dn, int rc){
-
-    fetchUserData(ld, base_dn, rc);
-    fetchOUData(ld,base_dn,rc);
-    fetchGroupData(ld,base_dn,rc);
-    fetchComputerData(ld,base_dn,rc);
-
-}
-
-// Fetch all Users 
-void fetchUsers(LDAP* ld, const char* base_dn, int rc){
-
-    fetchUserData(ld, base_dn, rc);
-    fetchOUData(ld,base_dn,rc);
-    fetchGroupData(ld,base_dn,rc);
-    fetchComputerData(ld,base_dn,rc);
-
-}
-
-// Fetch all Computers 
-void fetchComputers(LDAP* ld, const char* base_dn, int rc){
-    fetchUserData(ld, base_dn, rc);
-    fetchOUData(ld,base_dn,rc);
-    fetchGroupData(ld,base_dn,rc);
-    fetchComputerData(ld,base_dn,rc);
-
-}
-
-// Main function
-int main(){
-    const char* ldap_server = "ldap://10.94.73.182"; // win server ip
-    const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";  
-    const char* password = "Ram@123";
-    const char* base_dn = "dc=zoho,dc=com"; 
-    const char* user_base_dn = "CN=Users,dc=zoho,dc=com";   
-    const char* comp_base_dn = "CN=Computers,dc=zoho,dc=com"; 
-    // const char* ou_base_dn = "OU=zoho_org,dc=zoho,dc=com"; 
-
-    LDAP* ld;
-    int rc;  
-
+// LDAP binding
+void ldapBind() {
     rc = ldap_initialize(&ld, ldap_server);
-    cout << "Process start" << endl;
     if (rc != LDAP_SUCCESS) {
         cerr << "Failed to initialize LDAP connection: " << ldap_err2string(rc) << endl;
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
-      
     int ldap_version = LDAP_VERSION3;
     ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version);
 
@@ -272,22 +68,292 @@ int main(){
     if (rc != LDAP_SUCCESS) {
         cerr << "LDAP bind failed: " << ldap_err2string(rc) << endl;
         ldap_unbind_ext_s(ld, NULL, NULL);
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
+    }
+}
+
+// Get formatted time string for LDAP filter
+string getLDAPTimeString(time_t rawtime) {
+    struct tm* timeinfo;
+    char buffer[20]; // YYYYMMDDHHMMSS.0Z
+    timeinfo = gmtime(&rawtime);
+    strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S.0Z", timeinfo);
+    return string(buffer);
+}
+
+// Check the last modification time
+time_t getLastModificationTime(LDAP* ld, LDAPMessage* entry) {
+    struct berval** values = ldap_get_values_len(ld, entry, "whenChanged");
+    time_t lastModTime = 0;
+    if (values != NULL) {
+        struct tm tm = {};
+        if (strptime(values[0]->bv_val, "%Y%m%d%H%M%S.0Z", &tm) != NULL) {
+            lastModTime = mktime(&tm);
+        }
+        ldap_value_free_len(values);
+    }
+    return lastModTime;
+}
+
+// Fetch user data
+void fetchUserData(LDAP* ld, const char* base_dn, const char* filter, time_t lastCheckedTime, unordered_set<string>& processedEntries) {
+    string timeFilter;
+    string combinedFilter;
+    if(!initialFetch){
+        timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
+        combinedFilter = "(&" + string(filter) + timeFilter + ")";
+    } 
+    else {
+        combinedFilter = string(filter);
+    }
+    const char* user_attributes[] = {"givenName", "sn", "telephoneNumber", "mail", "physicalDeliveryOfficeName", "description", "whenChanged", NULL};
+    
+    LDAPMessage* result = nullptr;
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, combinedFilter.c_str(), const_cast<char**>(user_attributes), 0, NULL, NULL, NULL, 0, &result);
+    if (rc != LDAP_SUCCESS) {
+        // cerr << "LDAP user search failed: " << ldap_err2string(rc) << endl;
+        // return;
     }
 
+    for (LDAPMessage* entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        time_t entryLastModTime = getLastModificationTime(ld, entry);
+        string dn = ldap_get_dn(ld, entry);
 
+        if (initialFetch || (entryLastModTime > lastCheckedTime && processedEntries.find(dn) == processedEntries.end())) {
+            string givenName, sn, telephoneNumber, mail, office, description;
+
+            struct berval** values = ldap_get_values_len(ld, entry, "givenName");
+            if (values != NULL) {
+                givenName = values[0]->bv_val;
+                ldap_value_free_len(values);
+            }
+
+            values = ldap_get_values_len(ld, entry, "sn");
+            if (values != NULL) {
+                sn = values[0]->bv_val;
+                ldap_value_free_len(values);
+            }
+
+            values = ldap_get_values_len(ld, entry, "telephoneNumber");
+            if (values != NULL) {
+                telephoneNumber = values[0]->bv_val;
+                ldap_value_free_len(values);
+            }
+
+            values = ldap_get_values_len(ld, entry, "mail");
+            if (values != NULL) {
+                mail = values[0]->bv_val;
+                ldap_value_free_len(values);
+            }
+
+            values = ldap_get_values_len(ld, entry, "physicalDeliveryOfficeName");
+            if (values != NULL) {
+                office = values[0]->bv_val;
+                ldap_value_free_len(values);
+            }
+
+            values = ldap_get_values_len(ld, entry, "description");
+            if (values != NULL) {
+                description = values[0]->bv_val;
+                ldap_value_free_len(values);
+            }
+
+            if (!givenName.empty() && !sn.empty() && !telephoneNumber.empty() && !mail.empty() && !office.empty() && !description.empty()) {
+                string userPostData = "givenName=" + givenName + "&sn=" + sn + "&telephoneNumber=" + telephoneNumber +
+                                      "&mail=" + mail + "&office=" + office + "&description=" + description;
+                sendDataToServlet("http://localhost:8080/backend_war_exploded/UserDataServlet", userPostData);
+                cout << "User data sent to UserDataServlet: " << givenName << ", " << sn << ", " << telephoneNumber << ", " << mail << ", " << office << ", " << description << endl;
+            }
+
+            processedEntries.insert(dn);
+        }
+    }
+
+    ldap_msgfree(result);
+}
+
+// Fetch group data
+void fetchGroupData(LDAP* ld, const char* base_dn, time_t lastCheckedTime, unordered_set<string>& processedEntries) {
+    string timeFilter;
+    string combinedFilter;
+    if(!initialFetch){
+        timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
+        combinedFilter = "(&(objectClass=group)" + timeFilter + ")";
+    } else {
+        combinedFilter = "(objectClass=group)";
+    }
+    const char* group_attributes[] = {"cn", "description", "whenChanged", NULL};
+
+    LDAPMessage* result = nullptr;
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, combinedFilter.c_str(), const_cast<char**>(group_attributes), 0, NULL, NULL, NULL, 0, &result);
+    if (rc != LDAP_SUCCESS) {
+        // cerr << "LDAP group search failed: " << ldap_err2string(rc) << endl;
+        // return;
+    }
+
+    for (LDAPMessage* entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        string dn = ldap_get_dn(ld, entry);
+        string groupName, groupDescription;
+
+        struct berval** values = ldap_get_values_len(ld, entry, "cn");
+        if (values != NULL) {
+            groupName = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        values = ldap_get_values_len(ld, entry, "description");
+        if (values != NULL) {
+            groupDescription = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        time_t groupLastModTime = getLastModificationTime(ld, entry);
+        if (initialFetch || (groupLastModTime > lastCheckedTime && processedEntries.find(dn) == processedEntries.end())) {
+            if (!groupName.empty() && !groupDescription.empty()) {
+                string groupPostData = "groupName=" + groupName + "&description=" + groupDescription;
+                sendDataToServlet("http://localhost:8080/backend_war_exploded/GroupDataServlet", groupPostData);
+                cout << "Group data sent to GroupDataServlet: " << groupName << ", " << groupDescription << endl;
+                processedEntries.insert(dn);
+            }
+        }
+    }
+
+    ldap_msgfree(result);
+}
+
+// Fetch computer data
+void fetchComputerData(LDAP* ld, const char* base_dn, time_t lastCheckedTime, unordered_set<string>& processedEntries) {
+    string timeFilter;
+    string combinedFilter;
+    if(!initialFetch){
+        timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
+        combinedFilter = "(&(objectClass=computer)" + timeFilter + ")";
+    } else {
+        combinedFilter = "(objectClass=computer)";
+    }
+    const char* computer_attributes[] = {"cn", "description", "whenChanged", NULL};
+
+    LDAPMessage* result = nullptr;
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, combinedFilter.c_str(), const_cast<char**>(computer_attributes), 0, NULL, NULL, NULL, 0, &result);
+    if (rc != LDAP_SUCCESS) {
+        // cerr << "LDAP computer search failed: " << ldap_err2string(rc) << endl;
+        // return;
+    }
+
+    for (LDAPMessage* entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        string dn = ldap_get_dn(ld, entry);
+        string computerName, computerDescription;
+
+        struct berval** values = ldap_get_values_len(ld, entry, "cn");
+        if (values != NULL) {
+            computerName = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        values = ldap_get_values_len(ld, entry, "description");
+        if (values != NULL) {
+            computerDescription = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        time_t computerLastModTime = getLastModificationTime(ld, entry);
+        if (initialFetch || (computerLastModTime > lastCheckedTime && processedEntries.find(dn) == processedEntries.end())) {
+            if (!computerName.empty() && !computerDescription.empty()) {
+                string computerPostData = "computerName=" + computerName + "&description=" + computerDescription;
+                sendDataToServlet("http://localhost:8080/backend_war_exploded/ComputerDataServlet", computerPostData);
+                cout << "Computer data sent to ComputerDataServlet: " << computerName << ", " << computerDescription << endl;
+                processedEntries.insert(dn);
+            }
+        }
+    }
+
+    ldap_msgfree(result);
+}
+
+// Fetch organizational unit data
+void fetchOUData(LDAP* ld, const char* base_dn, time_t lastCheckedTime, unordered_set<string>& processedEntries) {
+    string timeFilter;
+    string combinedFilter;
+    if(!initialFetch){
+        timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
+        combinedFilter = "(&(objectClass=organizationalUnit)" + timeFilter + ")";
+    } else {
+        combinedFilter = "(objectClass=organizationalUnit)";
+    }
+    const char* ou_attributes[] = {"ou", "description", "whenChanged", NULL};
+
+    LDAPMessage* result = nullptr;
+    rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, combinedFilter.c_str(), const_cast<char**>(ou_attributes), 0, NULL, NULL, NULL, 0, &result);
+    if (rc != LDAP_SUCCESS) {
+        // cerr << "LDAP organizational unit search failed: " << ldap_err2string(rc) << endl;
+        // return;
+    }
+
+    for (LDAPMessage* entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+        string dn = ldap_get_dn(ld, entry);
+        string ouName, ouDescription;
+
+        struct berval** values = ldap_get_values_len(ld, entry, "ou");
+        if (values != NULL) {
+            ouName = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        values = ldap_get_values_len(ld, entry, "description");
+        if (values != NULL) {
+            ouDescription = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        time_t ouLastModTime = getLastModificationTime(ld, entry);
+        if (initialFetch || (ouLastModTime > lastCheckedTime && processedEntries.find(dn) == processedEntries.end())) {
+            if (!ouName.empty() && !ouDescription.empty()) {
+                string ouPostData = "ouName=" + ouName + "&description=" + ouDescription;
+                sendDataToServlet("http://localhost:8080/backend_war_exploded/OUDataServlet", ouPostData);
+                cout << "Organizational Unit data sent to OUDataServlet: " << ouName << ", " << ouDescription << endl;
+                processedEntries.insert(dn);
+            }
+        }
+    }
+
+    ldap_msgfree(result);
+}
+
+//fetch the data from Users
+void fetchFromUsers(LDAP* ld,const char* base_dn){
+        fetchUserData(ld, base_dn, "(objectClass=user)", lastCheckedTime, processedEntries); 
+        fetchGroupData(ld, base_dn, lastCheckedTime, processedEntries);
+        fetchComputerData(ld, base_dn, lastCheckedTime, processedEntries);
+
+}
+
+// function to fetc the data from the computer
+void fetchFromComputers (LDAP* ld,const char* base_dn){
+        fetchComputerData(ld, base_dn, lastCheckedTime, processedEntries);
+        fetchUserData(ld, base_dn, "(objectClass=user)", lastCheckedTime, processedEntries); 
+        fetchGroupData(ld, base_dn, lastCheckedTime, processedEntries);
+}
+
+// function to fetch data from OU's
+void fetchFromOU(LDAP* ld,const char* base_dn){
+        fetchOUData(ld,base_dn,lastCheckedTime, processedEntries);
+        fetchUserData(ld, base_dn, "(objectClass=user)", lastCheckedTime, processedEntries); 
+        fetchComputerData(ld, base_dn, lastCheckedTime, processedEntries);
+        fetchGroupData(ld, base_dn, lastCheckedTime, processedEntries); 
+}
+
+void fetchOu(){
     const char* ou_filter = "(objectClass=organizationalUnit)";
     const char* ou_attributes[] = {"ou", NULL};
+    const char* base_dn = "DC=zoho,DC=com";
 
     rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, ou_filter, const_cast<char**>(ou_attributes), 0, NULL, NULL, NULL, 0, &result);
     if (rc != LDAP_SUCCESS) {
-        cerr << "LDAP OU search failed: " << ldap_err2string(rc) << endl;
-        ldap_unbind_ext_s(ld, NULL, NULL);
-        return -1;
+        // cerr << "LDAP OU search failed: " << ldap_err2string(rc) << endl;
+        // ldap_unbind_ext_s(ld, NULL, NULL);
+        // return ;
     }
     cout << "Searching for OU objects..." << endl;
-    vector<string> ou_names;
-
     for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
         string ouName;
         for (attribute = ldap_first_attribute(ld, entry, &ber); attribute != NULL; attribute = ldap_next_attribute(ld, entry, ber)) {
@@ -300,25 +366,35 @@ int main(){
             ldap_memfree(attribute);
         }
         if (!ouName.empty()) {
-            ou_names.push_back("OU="+ouName+",DC=zoho,DC=com");
+            ou_names.push_back("OU="+ouName+",DC=zoho,DC=com"); // storing the OU's in the array
         }
         if (ber != nullptr) {
             ber_free(ber, 0);
         }
     }
     ldap_msgfree(result);
+}
 
-    while(true){
-        for(string ou_base_dn : ou_names){
-            // cout << "OU Name: " << name << endl;
-            fetchOU(ld,ou_base_dn.c_str(),rc);
+
+
+
+int main() {
+     ldapBind(); 
+     fetchOu();
+    while (true) {
+        fetchFromUsers(ld,user_base_dn); // fetch the data from the users
+        fetchFromComputers(ld,comp_base_dn); // fetch the data from computers
+        for(string ou_base_dn : ou_names){ // fetch the data from each OU's
+            fetchFromOU(ld,ou_base_dn.c_str());
         }
-        // fetchHometData(ld,base_dn,rc);
-        fetchUsers(ld,user_base_dn,rc);
-        fetchComputers(ld, comp_base_dn, rc);
-        sleep(5);
-    }
 
-    ldap_unbind_ext_s(ld, NULL, NULL);
-    return EXIT_SUCCESS;
+        lastCheckedTime = time(nullptr);
+        initialFetch = false;
+        
+
+        sleep(60);
+    }
+    ldap_unbind_ext_s(ld, nullptr, nullptr);
+
+    return 0;
 }

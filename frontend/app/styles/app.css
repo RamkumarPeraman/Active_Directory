@@ -61,7 +61,31 @@ body {
   overflow-y: auto;
   height: 100vh; 
 } */
+ /* .not_found{
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  text-align: center; 
+  height: 100px; 
+  margin-left: 80%; 
+ } */
+ .not_found {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 100px;
+  margin-top: 20%;
+  margin-left: 72%;
+  font-size: 50px;
+  white-space: nowrap; 
+}
 
+.empty{
+  margin-top: 35%;
+  margin-left: -28%;
+  color: #e74c3c;
+  height: 50%; 
+}
 
 .content {
   flex-grow: 1;

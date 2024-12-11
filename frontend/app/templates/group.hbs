@@ -8,7 +8,8 @@
         <a href="#" {{on "click" (fn this.showGroupDetails group.id)}}><img src="../asset/group.png" alt="Home" class="ou_icon o_icon" /><br>{{group.group_name}}</a>
       </div>
     {{else}}
-      <p>No groups found.</p>
+      <h3 class="not_found">No groups found</h3>
+      <img src="../asset/empty.png" alt="Home" class="empty" />
     {{/each}}
   </div>
   {{#if this.selectedGroup}}
