@@ -15,18 +15,19 @@ public class ComputerDataServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String computerName = request.getParameter("computerName");
         String description = request.getParameter("description");
+        String type = request.getParameter("type");
 
         try (Connection conn = DBConnection.getConnection()) {
             if (computerExists(conn, computerName, description)) {
                 response.getWriter().println("Computer data already exists!");
             } else {
-                if(insertComputer(conn, computerName, description)) {
+                if (insertComputer(conn, type, computerName, description)) {
                     response.getWriter().println("Computer data inserted successfully!");
-                }else {
+                } else {
                     response.getWriter().println("Computer data insertion failed!");
                 }
             }
-        }catch(SQLException e) {
+        } catch (SQLException e) {
             response.getWriter().println("Error: Unable to connect to the database.");
             e.printStackTrace();
         }
@@ -41,7 +42,7 @@ public class ComputerDataServlet extends HttpServlet {
     }
 
     private boolean computerExists(Connection conn, String computerName, String description) throws SQLException {
-        String checkSql = "SELECT COUNT(*) FROM computer_det WHERE computer_name = ? AND description = ?";
+        String checkSql = "SELECT COUNT(*) FROM act_dit WHERE name = ? AND description = ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
             checkStmt.setString(1, computerName);
             checkStmt.setString(2, description);
@@ -55,11 +56,13 @@ public class ComputerDataServlet extends HttpServlet {
         return false;
     }
 
-    private boolean insertComputer(Connection conn, String computerName, String description) throws SQLException {
-        String insertSql = "INSERT INTO computer_det (computer_name, description) VALUES (?, ?)";
+    private boolean insertComputer(Connection conn, String type, String computerName, String description) throws SQLException {
+        String insertSql = "INSERT INTO act_dit (type, name, description,isDeleted) VALUES (?, ?, ?,'NO')";
         try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-            insertStmt.setString(1, computerName);
-            insertStmt.setString(2, description);
+            insertStmt.setString(1, type);
+            insertStmt.setString(2, computerName);
+            insertStmt.setString(3, description);
+//            insertStmt.setString(4, isDeleted);
 
             int rowsInserted = insertStmt.executeUpdate();
             return rowsInserted > 0;

@@ -5,7 +5,7 @@
   <div class="tiles">
     {{#each this.computers as |computer|}}
       <div class="tile">
-        <a href="#" {{on "click" (fn this.showComputerDetails computer.id)}}><img src="../asset/desktop.png" alt="Home" class="groups_icon" /><br> {{computer.computer_name}}</a>
+        <a href="#" {{on "click" (fn this.showComputerDetails computer.id)}}><img src="../asset/desktop.png" alt="Home" class="groups_icon" /><br> {{computer.name}}</a>
         <p></p>
       </div>
     {{else}}
@@ -16,11 +16,11 @@
   {{#if this.selectedComputer}}
     <div class="popup">
       <div class="popup-content">
-        <button class="close-button" {{on "click" this.closePopup}}>X</button>
+        <button class="close-button" type="button" {{on "click" this.closePopup}}>X</button>
         <p>
             <strong>Computer Name:</strong>
-            {{#if this.selectedComputer.computer_name}}
-               <i>{{this.selectedComputer.computer_name}}</i>
+            {{#if this.selectedComputer.name}}
+               <i>{{this.selectedComputer.name}}</i>
             {{else}}
                <i>No Computer Name found</i>
             {{/if}}

@@ -14,29 +14,30 @@ public class OUServlet extends HttpServlet {
         response.setContentType("application/json");
 
         String id = request.getParameter("id");
-        String ouName = request.getParameter("ou_name");
+        String name = request.getParameter("name");
         String description = request.getParameter("description");
 
         try (PrintWriter out = response.getWriter()) {
-            String jsonData = getOUDataAsJson(id, ouName, description);
+            String jsonData = getOUDataAsJson(id, name, description);
             out.write(jsonData);
         }
     }
 
-    public String getOUDataAsJson(String id, String ouName, String description) {
-        StringBuilder query = new StringBuilder("SELECT id, ou_name, description FROM ou_det");
+    public String getOUDataAsJson(String id, String name, String description) {
+        StringBuilder query = new StringBuilder("SELECT id, name, description FROM act_dit WHERE type = 'OrganizationUnit' AND isDeleted <> 'YES'");
         boolean hasCondition = false;
 
+        // Add conditions based on the provided parameters
         if (id != null && !id.isEmpty()) {
-            query.append(" WHERE id = ?");
+            query.append(" AND id = ?");
             hasCondition = true;
         }
-        if (ouName != null && !ouName.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" ou_name = ?");
+        if (name != null && !name.isEmpty()) {
+            query.append(hasCondition ? " AND" : " AND").append(" name LIKE ?");
             hasCondition = true;
         }
         if (description != null && !description.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" description = ?");
+            query.append(hasCondition ? " AND" : " AND").append(" description = ?");
         }
 
         try (Connection conn = DBConnection.getConnection();
@@ -44,8 +45,8 @@ public class OUServlet extends HttpServlet {
             int index = 1;
             if (id != null && !id.isEmpty())
                 pstmt.setInt(index++, Integer.parseInt(id));
-            if (ouName != null && !ouName.isEmpty())
-                pstmt.setString(index++, ouName);
+            if (name != null && !name.isEmpty())
+                pstmt.setString(index++, "%" + name + "%");
             if (description != null && !description.isEmpty())
                 pstmt.setString(index++, description);
 
@@ -63,7 +64,7 @@ public class OUServlet extends HttpServlet {
         if (id != null && !id.isEmpty() && rs.next()) {
             jsonData.append("{")
                     .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                    .append("\"ou_name\":\"").append(rs.getString("ou_name")).append("\", ")
+                    .append("\"name\":\"").append(rs.getString("name")).append("\", ")
                     .append("\"description\":\"").append(rs.getString("description"))
                     .append("\"}");
         } else {
@@ -71,12 +72,12 @@ public class OUServlet extends HttpServlet {
             while (rs.next()) {
                 jsonData.append("{")
                         .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                        .append("\"ou_name\":\"").append(rs.getString("ou_name")).append("\", ")
+                        .append("\"name\":\"").append(rs.getString("name")).append("\", ")
                         .append("\"description\":\"").append(rs.getString("description"))
                         .append("\"},");
             }
             if (jsonData.length() > 1) {
-                jsonData.setLength(jsonData.length() - 1);  // Remove last comma
+                jsonData.setLength(jsonData.length() - 1); // Remove last comma
             }
             jsonData.append("]");
         }

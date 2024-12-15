@@ -20,7 +20,7 @@ export default class UsersController extends Controller {
     } catch (error) {
       console.error('Error fetching users:', error);
       this.users = [];
-    } 
+    }
   }
 
   @action

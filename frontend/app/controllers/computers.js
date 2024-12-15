@@ -30,7 +30,9 @@ export default class ComputerController extends Controller {
         `http://localhost:8080/backend_war_exploded/ComputerServlet?id=${computerId}`,
       );
       if (!response.ok) {
-        throw new Error(`Failed to fetch computer details: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch computer details: ${response.statusText}`,
+        );
       }
       this.selectedComputer = await response.json();
     } catch (error) {

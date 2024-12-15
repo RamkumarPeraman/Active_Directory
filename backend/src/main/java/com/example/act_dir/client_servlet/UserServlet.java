@@ -16,47 +16,32 @@ public class UserServlet extends HttpServlet {
         String id = request.getParameter("id");
         String firstName = request.getParameter("first_name");
         String lastName = request.getParameter("last_name");
-        String phoneNumber = request.getParameter("phone_number");
-        String email = request.getParameter("email");
-        String office = request.getParameter("office");
         String description = request.getParameter("description");
 
         try (PrintWriter out = response.getWriter()) {
-            String jsonData = getUserDataAsJson(id, firstName, lastName, phoneNumber, email, office, description);
+            String jsonData = getUserDataAsJson(id, firstName, lastName, description);
             out.write(jsonData);
         }
     }
 
-    public String getUserDataAsJson(String id, String firstName, String lastName, String phoneNumber, String email, String office, String description) {
-        StringBuilder query = new StringBuilder("SELECT id, first_name, last_name, phone_number, email, office, description FROM user_det");
+    public String getUserDataAsJson(String id, String firstName, String lastName, String description) {
+        StringBuilder query = new StringBuilder("SELECT id, name, description FROM act_dit WHERE type = 'User' AND isDeleted <> 'YES'");
         boolean hasCondition = false;
 
+        // Add conditions based on the provided parameters
         if (id != null && !id.isEmpty()) {
-            query.append(" WHERE id = ?");
+            query.append(" AND id = ?");
             hasCondition = true;
         }
         if (firstName != null && !firstName.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" first_name = ?");
+            query.append(hasCondition ? " AND" : " AND").append(" name LIKE ?");
             hasCondition = true;
         }
         if (lastName != null && !lastName.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" last_name = ?");
-            hasCondition = true;
-        }
-        if (phoneNumber != null && !phoneNumber.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" phone_number = ?");
-            hasCondition = true;
-        }
-        if (email != null && !email.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" email = ?");
-            hasCondition = true;
-        }
-        if (office != null && !office.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" office = ?");
-            hasCondition = true;
+            query.append(hasCondition ? " AND" : " AND").append(" name LIKE ?");
         }
         if (description != null && !description.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" description = ?");
+            query.append(hasCondition ? " AND" : " AND").append(" description = ?");
         }
 
         try (Connection conn = DBConnection.getConnection();
@@ -65,15 +50,9 @@ public class UserServlet extends HttpServlet {
             if (id != null && !id.isEmpty())
                 pstmt.setInt(index++, Integer.parseInt(id));
             if (firstName != null && !firstName.isEmpty())
-                pstmt.setString(index++, firstName);
+                pstmt.setString(index++, "%" + firstName + "%");
             if (lastName != null && !lastName.isEmpty())
-                pstmt.setString(index++, lastName);
-            if (phoneNumber != null && !phoneNumber.isEmpty())
-                pstmt.setString(index++, phoneNumber);
-            if (email != null && !email.isEmpty())
-                pstmt.setString(index++, email);
-            if (office != null && !office.isEmpty())
-                pstmt.setString(index++, office);
+                pstmt.setString(index++, "%" + lastName + "%");
             if (description != null && !description.isEmpty())
                 pstmt.setString(index++, description);
 
@@ -89,30 +68,34 @@ public class UserServlet extends HttpServlet {
     public String buildJsonData(ResultSet rs, String id) throws SQLException {
         StringBuilder jsonData = new StringBuilder();
         if (id != null && !id.isEmpty() && rs.next()) {
+            String name = rs.getString("name");
+            String[] nameParts = name.split(" ");
+            String firstName = nameParts.length > 0 ? nameParts[0] : "";
+            String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
             jsonData.append("{")
                     .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                    .append("\"first_name\":\"").append(rs.getString("first_name")).append("\", ")
-                    .append("\"last_name\":\"").append(rs.getString("last_name")).append("\", ")
-                    .append("\"phone_number\":\"").append(rs.getString("phone_number")).append("\", ")
-                    .append("\"email\":\"").append(rs.getString("email")).append("\", ")
-                    .append("\"office\":\"").append(rs.getString("office")).append("\", ")
+                    .append("\"first_name\":\"").append(firstName).append("\", ")
+                    .append("\"last_name\":\"").append(lastName).append("\", ")
                     .append("\"description\":\"").append(rs.getString("description"))
                     .append("\"}");
         } else {
             jsonData.append("[");
             while (rs.next()) {
+                String name = rs.getString("name");
+                String[] nameParts = name.split(" ");
+                String firstName = nameParts.length > 0 ? nameParts[0] : "";
+                String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
                 jsonData.append("{")
                         .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                        .append("\"first_name\":\"").append(rs.getString("first_name")).append("\", ")
-                        .append("\"last_name\":\"").append(rs.getString("last_name")).append("\", ")
-                        .append("\"phone_number\":\"").append(rs.getString("phone_number")).append("\", ")
-                        .append("\"email\":\"").append(rs.getString("email")).append("\", ")
-                        .append("\"office\":\"").append(rs.getString("office")).append("\", ")
+                        .append("\"first_name\":\"").append(firstName).append("\", ")
+                        .append("\"last_name\":\"").append(lastName).append("\", ")
                         .append("\"description\":\"").append(rs.getString("description"))
                         .append("\"},");
             }
             if (jsonData.length() > 1) {
-                jsonData.setLength(jsonData.length() - 1);
+                jsonData.setLength(jsonData.length() - 1); // Remove last comma
             }
             jsonData.append("]");
         }

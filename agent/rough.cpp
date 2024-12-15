@@ -12,11 +12,15 @@
 using namespace std;
 
 // LDAP connection
-const char* ldap_server = "ldap://10.94.73.155";
+const char* ldap_server = "ldap://192.168.87.35";
 const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";
 const char* password = "Ram@123";
 const char* comp_base_dn = "CN=Computers,DC=zoho,DC=com";
 const char* user_base_dn = "CN=Users,DC=zoho,DC=com";
+
+const char* dlt_base_dn = "CN=Deleted Objects,DC=zoho,DC=com";
+LDAPControl show_deleted_control = {(char*)"1.2.840.113556.1.4.417", {0, NULL}, 1};
+LDAPControl *server_controls[] = {&show_deleted_control, NULL};
 vector<string> ou_names;
 
 // Global variables
@@ -325,6 +329,70 @@ void fetchOUData(LDAP* ld, const char* base_dn, time_t lastCheckedTime, unordere
     ldap_msgfree(result);
 }
 
+void fetchDeletedObjects(LDAP* ld, const char* base_dn, time_t lastCheckedTime, unordered_set<string>& processedEntries) {
+    string timeFilter;
+    string combinedFilter;
+    if (!initialFetch) {
+        timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
+        combinedFilter = "(&(isDeleted=TRUE)" + timeFilter + ")";
+    } else {
+        combinedFilter = "(isDeleted=TRUE)";
+    }
+
+    LDAPControl show_deleted_control = {(char*)"1.2.840.113556.1.4.417", {0, NULL}, 1};
+    LDAPControl* server_controls[] = {&show_deleted_control, nullptr};
+    LDAPMessage* result = nullptr;
+    int rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, combinedFilter.c_str(), nullptr, 0, server_controls, nullptr, nullptr, LDAP_NO_LIMIT, &result);
+    if (rc != LDAP_SUCCESS) {
+        cerr << "ldap_search_ext_s: " << ldap_err2string(rc) << endl;
+        ldap_unbind_ext_s(ld, nullptr, nullptr);
+        return;
+    }
+
+    for (LDAPMessage* entry = ldap_first_entry(ld, result); entry != nullptr; entry = ldap_next_entry(ld, entry)) {
+        char* dn = ldap_get_dn(ld, entry);
+        string objectType, objectName, objectDescription;
+
+        struct berval** values = ldap_get_values_len(ld, entry, "objectClass");
+        if (values != nullptr) {
+            for (int i = 0; values[i] != nullptr; ++i) {
+                string objectClass = values[i]->bv_val;
+                if (objectClass == "group" || objectClass == "user" || objectClass == "computer" || objectClass == "organizationalUnit") {
+                    objectType = objectClass;
+                    break;
+                }
+            }
+            ldap_value_free_len(values);
+        }
+
+        values = ldap_get_values_len(ld, entry, "cn");
+        if (values != nullptr && values[0] != nullptr) {
+            objectName = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        values = ldap_get_values_len(ld, entry, "description");
+        if (values != nullptr) {
+            objectDescription = values[0]->bv_val;
+            ldap_value_free_len(values);
+        }
+
+        if (processedEntries.find(dn) == processedEntries.end()) {
+            if (!objectType.empty() && !objectName.empty() && !objectDescription.empty()) {
+                int len = objectName.size();
+                string objName = objectName.substr(0, len - 41);
+                string deleteObjData = "type=" + objectType + "&objectName=" + objName + "&description=" + objectDescription;
+                sendDataToServlet("http://localhost:8080/backend_war_exploded/DeletedObjDataServlet", deleteObjData);
+                cout << "Deleted object data sent to servlet: " << objName << ", " << objectType << ", " << objectDescription << endl;
+                processedEntries.insert(dn);
+            }
+        }
+        ldap_memfree(dn);
+    }
+
+    ldap_msgfree(result);
+}
+
 //fetch the data from Users
 void fetchFromUsers(LDAP* ld,const char* base_dn){
         fetchUserData(ld, base_dn, "(objectClass=user)", lastCheckedTime, processedEntries); 
@@ -355,9 +423,9 @@ void fetchOu(){
 
     rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, ou_filter, const_cast<char**>(ou_attributes), 0, NULL, NULL, NULL, 0, &result);
     if (rc != LDAP_SUCCESS) {
-        // cerr << "LDAP OU search failed: " << ldap_err2string(rc) << endl;
-        // ldap_unbind_ext_s(ld, NULL, NULL);
-        // return ;
+        cerr << "LDAP OU search failed: " << ldap_err2string(rc) << endl;
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        return ;
     }
     cout << "Searching for OU objects..." << endl;
     for (entry = ldap_first_entry(ld, result); entry != NULL; entry = ldap_next_entry(ld, entry)) {
@@ -382,15 +450,16 @@ void fetchOu(){
 }
 
 int main() {
-     ldapBind(); 
-     fetchOu();
+    ldapBind(); 
+    fetchOu();
     while (true) {
         fetchFromUsers(ld,user_base_dn); // fetch the data from the users
+        fetchDeletedObjects(ld,dlt_base_dn,lastCheckedTime,processedEntries);
         fetchFromComputers(ld,comp_base_dn); // fetch the data from computers
         for(string ou_base_dn : ou_names){ // fetch the data from each OU's
             fetchFromOU(ld,ou_base_dn.c_str());
         }
-
+        cout << "hpp";
         lastCheckedTime = time(nullptr);
         initialFetch = false;
         

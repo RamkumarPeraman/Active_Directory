@@ -40,6 +40,15 @@
         <servlet-name>OUServlet</servlet-name>
         <url-pattern>/OUServlet/*</url-pattern>
     </servlet-mapping>
+    <!--    ################################################-->
+    <servlet>
+        <servlet-name>DeletedObjServlet</servlet-name>
+        <servlet-class>com.example.act_dir.client_servlet.DeletedObjServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DeletedObjServlet</servlet-name>
+        <url-pattern>/DeletedObjServlet/*</url-pattern>
+    </servlet-mapping>
 
 
 
@@ -79,5 +88,14 @@
     <servlet-mapping>
         <servlet-name>ComputerDataServlet</servlet-name>
         <url-pattern>/ComputerDataServlet/*</url-pattern>
+    </servlet-mapping>
+    <!--    ################################################-->
+    <servlet>
+        <servlet-name>DeletedObjDataServlet</servlet-name>
+        <servlet-class>com.example.act_dir.server_servlet.DeletedObjDataServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DeletedObjDataServlet</servlet-name>
+        <url-pattern>/DeletedObjDataServlet/*</url-pattern>
     </servlet-mapping>
 </web-app>

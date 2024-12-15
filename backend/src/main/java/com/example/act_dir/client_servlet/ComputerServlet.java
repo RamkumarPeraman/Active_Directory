@@ -14,7 +14,7 @@ public class ComputerServlet extends HttpServlet {
         response.setContentType("application/json");
 
         String id = request.getParameter("id");
-        String computerName = request.getParameter("computer_name");
+        String computerName = request.getParameter("name");
         String description = request.getParameter("description");
 
         try (PrintWriter out = response.getWriter()) {
@@ -22,22 +22,26 @@ public class ComputerServlet extends HttpServlet {
             out.write(jsonData);
         }
     }
+
     public String getComputerDataAsJson(String id, String computerName, String description) {
-        StringBuilder query = new StringBuilder("SELECT id, computer_name, description FROM computer_det");
+        StringBuilder query = new StringBuilder("SELECT id, name, description FROM act_dit WHERE type = 'Computer' AND isDeleted <> 'YES'");
         boolean hasCondition = false;
+
+        // Add conditions based on the provided parameters
         if(id != null && !id.isEmpty()) {
-            query.append(" WHERE id = ?");
+            query.append(" AND id = ?");
             hasCondition = true;
         }
         if(computerName != null && !computerName.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" computer_name = ?");
+            query.append(hasCondition ? " AND" : " AND").append(" name = ?");
             hasCondition = true;
         }
         if(description != null && !description.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" description = ?");
+            query.append(hasCondition ? " AND" : " AND").append(" description = ?");
         }
-        try(Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query.toString())){
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
             int index = 1;
             if (id != null && !id.isEmpty())
                 pstmt.setInt(index++, Integer.parseInt(id));
@@ -49,9 +53,7 @@ public class ComputerServlet extends HttpServlet {
             try (ResultSet rs = pstmt.executeQuery()) {
                 return buildJsonData(rs, id);
             }
-        }
-
-        catch (SQLException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
             return "{\"error\":\"Database error\"}";
         }
@@ -62,7 +64,7 @@ public class ComputerServlet extends HttpServlet {
         if (id != null && !id.isEmpty() && rs.next()) {
             jsonData.append("{")
                     .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                    .append("\"computer_name\":\"").append(rs.getString("computer_name")).append("\", ")
+                    .append("\"name\":\"").append(rs.getString("name")).append("\", ")
                     .append("\"description\":\"").append(rs.getString("description"))
                     .append("\"}");
         }
@@ -71,12 +73,12 @@ public class ComputerServlet extends HttpServlet {
             while (rs.next()) {
                 jsonData.append("{")
                         .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                        .append("\"computer_name\":\"").append(rs.getString("computer_name")).append("\", ")
+                        .append("\"name\":\"").append(rs.getString("name")).append("\", ")
                         .append("\"description\":\"").append(rs.getString("description"))
                         .append("\"},");
             }
             if(jsonData.length() > 1) {
-                jsonData.setLength(jsonData.length() - 1);
+                jsonData.setLength(jsonData.length() - 1); // Remove last comma
             }
             jsonData.append("]");
         }

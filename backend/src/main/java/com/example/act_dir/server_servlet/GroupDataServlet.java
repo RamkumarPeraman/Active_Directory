@@ -15,12 +15,13 @@ public class GroupDataServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String groupName = request.getParameter("groupName");
         String description = request.getParameter("description");
+        String type = request.getParameter("type");
 
         try (Connection conn = DBConnection.getConnection()) {
             if (groupExists(conn, groupName, description)) {
                 response.getWriter().println("Group data already exists!");
             } else {
-                if (insertGroup(conn, groupName, description)) {
+                if (insertGroup(conn,type, groupName, description)) {
                     response.getWriter().println("Group data inserted successfully!");
                 } else {
                     response.getWriter().println("Group data insertion failed!");
@@ -41,7 +42,7 @@ public class GroupDataServlet extends HttpServlet {
     }
 
     private boolean groupExists(Connection conn, String groupName, String description) throws SQLException {
-        String checkSql = "SELECT COUNT(*) FROM group_det WHERE group_name = ? AND description = ?";
+        String checkSql = "SELECT COUNT(*) FROM act_dit WHERE name = ? AND description = ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
             checkStmt.setString(1, groupName);
             checkStmt.setString(2, description);
@@ -55,11 +56,12 @@ public class GroupDataServlet extends HttpServlet {
         return false;
     }
 
-    private boolean insertGroup(Connection conn, String groupName, String description) throws SQLException {
-        String insertSql = "INSERT INTO group_det (group_name, description) VALUES (?, ?)";
+    private boolean insertGroup(Connection conn,String type, String groupName, String description) throws SQLException {
+        String insertSql = "INSERT INTO act_dit (type,name, description,isDeleted) VALUES (?,?, ?,'NO')";
         try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-            insertStmt.setString(1, groupName);
-            insertStmt.setString(2, description);
+            insertStmt.setString(1, type);
+            insertStmt.setString(2, groupName);
+            insertStmt.setString(3, description);
 
             int rowsInserted = insertStmt.executeUpdate();
             return rowsInserted > 0;

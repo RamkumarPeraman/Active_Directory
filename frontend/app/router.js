@@ -13,4 +13,5 @@ Router.map(function () {
   this.route('computers');
   this.route('ou');
   this.route('group');
+  this.route('deleted-objects');
 });

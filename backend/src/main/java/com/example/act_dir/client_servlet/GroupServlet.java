@@ -14,7 +14,7 @@ public class GroupServlet extends HttpServlet {
         response.setContentType("application/json");
 
         String id = request.getParameter("id");
-        String groupName = request.getParameter("group_name");
+        String groupName = request.getParameter("name");
         String description = request.getParameter("description");
 
         try (PrintWriter out = response.getWriter()) {
@@ -24,24 +24,24 @@ public class GroupServlet extends HttpServlet {
     }
 
     public String getGroupDataAsJson(String id, String groupName, String description) {
-        StringBuilder query = new StringBuilder("SELECT id, group_name, description FROM group_det");
+        StringBuilder query = new StringBuilder("SELECT id, name, description FROM act_dit WHERE type = 'Group' AND isDeleted = 'NO'");
         boolean hasCondition = false;
 
+        // Add conditions based on the provided parameters
         if (id != null && !id.isEmpty()) {
-            query.append(" WHERE id = ?");
+            query.append(" AND id = ?");
             hasCondition = true;
         }
         if (groupName != null && !groupName.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" group_name = ?");
+            query.append(hasCondition ? " AND" : " AND").append(" name = ?");
             hasCondition = true;
         }
         if (description != null && !description.isEmpty()) {
-            query.append(hasCondition ? " AND" : " WHERE").append(" description = ?");
+            query.append(hasCondition ? " AND" : " AND").append(" description = ?");
         }
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query.toString())) {
-            
             int index = 1;
             if (id != null && !id.isEmpty())
                 pstmt.setInt(index++, Integer.parseInt(id));
@@ -64,20 +64,21 @@ public class GroupServlet extends HttpServlet {
         if (id != null && !id.isEmpty() && rs.next()) {
             jsonData.append("{")
                     .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                    .append("\"group_name\":\"").append(rs.getString("group_name")).append("\", ")
+                    .append("\"name\":\"").append(rs.getString("name")).append("\", ")
                     .append("\"description\":\"").append(rs.getString("description"))
                     .append("\"}");
-        } else {
+        }
+        else {
             jsonData.append("[");
             while (rs.next()) {
                 jsonData.append("{")
                         .append("\"id\":\"").append(rs.getInt("id")).append("\", ")
-                        .append("\"group_name\":\"").append(rs.getString("group_name")).append("\", ")
+                        .append("\"name\":\"").append(rs.getString("name")).append("\", ")
                         .append("\"description\":\"").append(rs.getString("description"))
                         .append("\"},");
             }
             if (jsonData.length() > 1) {
-                jsonData.setLength(jsonData.length() - 1);
+                jsonData.setLength(jsonData.length() - 1); // Remove last comma
             }
             jsonData.append("]");
         }

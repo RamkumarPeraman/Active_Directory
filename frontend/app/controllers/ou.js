@@ -14,7 +14,9 @@ export default class OUController extends Controller {
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to fetch organizational units: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch organizational units: ${response.statusText}`,
+        );
       }
       this.ous = await response.json();
     } catch (error) {
@@ -30,7 +32,9 @@ export default class OUController extends Controller {
         `http://localhost:8080/backend_war_exploded/OUServlet?id=${ouId}`,
       );
       if (!response.ok) {
-        throw new Error(`Failed to fetch organizational unit details: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch organizational unit details: ${response.statusText}`,
+        );
       }
       this.selectedOU = await response.json();
     } catch (error) {

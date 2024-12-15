@@ -11,25 +11,22 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public class UserDataServlet extends HttpServlet {
+public class DeletedObjDataServlet extends HttpServlet {
+    @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String userName = request.getParameter("userName");
-        // Other parameters (uncomment if needed)
-        // String sn = request.getParameter("sn");
-        // String telephoneNumber = request.getParameter("telephoneNumber");
-        // String mail = request.getParameter("mail");
-        // String office = request.getParameter("office");
+        String objectName = request.getParameter("objectName");
         String description = request.getParameter("description");
         String type = request.getParameter("type");
-
+        System.out.print(objectName+"----------------");
+        response.setContentType("text/plain");
         try (Connection conn = DBConnection.getConnection()) {
-            if (userExists(conn, userName, description)) {
-                response.getWriter().println("Data already exists!");
+            if (objectExists(conn, objectName, description)) {
+                response.getWriter().println("Object data already exists!");
             } else {
-                if (insertUser(conn, type, userName, description)) {
-                    response.getWriter().println("Data inserted successfully!");
+                if (insertObject(conn, type, objectName, description)) {
+                    response.getWriter().println("Object data inserted successfully!");
                 } else {
-                    response.getWriter().println("Data insertion failed!");
+                    response.getWriter().println("Object data insertion failed!");
                 }
             }
         } catch (SQLException e) {
@@ -38,21 +35,21 @@ public class UserDataServlet extends HttpServlet {
         }
     }
 
+    @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         // Set the response content type
         response.setContentType("text/html");
 
         // Write the response
-        response.getWriter().println("<html><body><h1>Data Inserted</h1></body></html>");
+        response.getWriter().println("<html><body><h1>Insert Object Data</h1></body></html>");
     }
 
-    // Modify this method if you need to check more fields (e.g., sn, telephoneNumber, etc.)
-    private boolean userExists(Connection conn, String userName, String description) throws SQLException {
+    private boolean objectExists(Connection conn, String objectName, String description) throws SQLException {
         String checkSql = "SELECT COUNT(*) FROM act_dit WHERE name = ? AND description = ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-            checkStmt.setString(1, userName);
+            checkStmt.setString(1, objectName);
             checkStmt.setString(2, description);
-
+            System.out.print(objectName+"----------------");
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
                     return true;
@@ -62,14 +59,13 @@ public class UserDataServlet extends HttpServlet {
         return false;
     }
 
-    // Modify this method if you want to insert more fields like sn, telephoneNumber, etc.
-    private boolean insertUser(Connection conn, String type, String userName, String description) throws SQLException {
-        String insertSql = "INSERT INTO act_dit (type, name, description,isDeleted) VALUES (?, ?, ?,'NO')";
+    private boolean insertObject(Connection conn, String type, String objectName, String description) throws SQLException {
+        String insertSql = "INSERT INTO act_dit (type, name, description,isDeleted) VALUES (?, ?, ?,'YES')";
         try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
             insertStmt.setString(1, type);
-            insertStmt.setString(2, userName);
+            insertStmt.setString(2, objectName);
             insertStmt.setString(3, description);
-
+            System.out.print(objectName+"----------------");
             int rowsInserted = insertStmt.executeUpdate();
             return rowsInserted > 0;
         }

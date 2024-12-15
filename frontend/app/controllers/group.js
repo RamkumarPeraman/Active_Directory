@@ -30,7 +30,9 @@ export default class GroupController extends Controller {
         `http://localhost:8080/backend_war_exploded/GroupServlet?id=${groupId}`,
       );
       if (!response.ok) {
-        throw new Error(`Failed to fetch group details: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch group details: ${response.statusText}`,
+        );
       }
       this.selectedGroup = await response.json();
     } catch (error) {
