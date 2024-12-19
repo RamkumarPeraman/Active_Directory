@@ -1,10 +1,11 @@
 import Route from '@ember/routing/route';
 
 export default class ComputerRoute extends Route {
+  // Fetch initial data when route is loaded
   async model() {
     try {
       const response = await fetch(
-        'http://localhost:8080/backend_war_exploded/ComputerServlet',
+        'http://localhost:8080/backend_war_exploded/ComputerServlet'
       );
 
       if (!response.ok) {
@@ -16,6 +17,8 @@ export default class ComputerRoute extends Route {
       return [];
     }
   }
+
+  // Setup controller with the model data
   setupController(controller, model) {
     super.setupController(controller, model);
     controller.computers = model;

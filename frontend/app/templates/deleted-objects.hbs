@@ -14,7 +14,6 @@
           {{else if (eq deletedObject.type "organizationalUnit")}}
             <img src="../asset/ou.png" alt="Organisational Unit Icon" class="ou_icon o_icon" />
           {{/if}}
-          
           <br>{{deletedObject.name}}
         </a>
       </div>
@@ -32,6 +31,7 @@
           <strong>Name:</strong>
           {{#if this.selectedDeletedObject.name}}
             <i>{{this.selectedDeletedObject.name}}</i>
+
           {{else}}
             <i>Ram kumar</i>
           {{/if}}

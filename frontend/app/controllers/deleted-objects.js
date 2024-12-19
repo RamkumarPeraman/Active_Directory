@@ -5,8 +5,6 @@ import { tracked } from '@glimmer/tracking';
 export default class DeletedObjectsController extends Controller {
   @tracked deletedObjects = [];
   @tracked selectedDeletedObject = null;
-
-  // Action to fetch deleted object details
   @action
   async showDeletedObjectsDetails(deletedObjectId) {
     try {

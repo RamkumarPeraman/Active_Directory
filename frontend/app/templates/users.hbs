@@ -1,4 +1,4 @@
-<div class="user-grid">
+{{!-- <div class="user-grid">
     <div value="" class="head_name">
   </div>
   <h1 class="heading">Users</h1>
@@ -33,14 +33,66 @@
               <i>No Last Name found</i>
             {{/if}}
         </p>
-         {{!-- <p>
-            <strong>Phone Number:</strong>
-            {{#if this.selectedUser.phone_number}}
-               <i>{{this.selectedUser.phone_number}}</i> 
-            {{else}}
-               <i>No Phone Number found</i>
-            {{/if}}
-          </p> --}}
+
+      </div>
+    </div>
+  {{/if}}
+</div> --}}
+
+
+<div class="user-grid">
+  <h1 class="heading">Users</h1>
+
+  <!-- Search Bar -->
+  <div class="search-options">
+    <div class="search-wrapper">
+      <img src="../asset/search.png" alt="User" class="search_icon" />
+      <input
+        type="text"
+        id="search"
+        name="search"
+        placeholder="Search by First Name..."
+        value={{this.searchQuery}}
+        {{on "input" this.updateSearchQuery}}
+      />
+    </div>
+  </div>
+
+  <!-- Sort Options -->
+  <div class="sort-options">
+    <label for="sort">Sort by:</label>
+    <select id="sort" name="sort" {{on "change" this.updateSortBy}}>
+      <option value="asc-desc">Ascending - Descending</option>
+      <option value="desc-asc">Descending - Ascending</option>
+      <option value="new-old">New - Old</option>
+      <option value="old-new">Old - New</option>
+    </select>
+  </div>
+
+  <!-- Display User Tiles -->
+  <div class="tiles">
+    {{#each this.users as |user|}}
+      <div class="tile">
+        <a href="#" {{on "click" (fn this.showUserDetails user.id)}}>
+          <img src="../asset/user.png" alt="User" class="user_icon u_icon" /><br>
+          {{user.first_name}} {{user.last_name}}
+        </a>
+      </div>
+    {{else}}
+      <h3 class="not_found">No users found</h3>
+      <img src="../asset/empty.png" alt="No Users" class="empty" />
+    {{/each}}
+  </div>
+
+  <!-- Popup for Selected User Details -->
+  {{#if this.selectedUser}}
+    <div class="popup">
+      <div class="popup-content">
+        <button class="close-button" type="button" {{on "click" this.closePopup}}>X</button>
+        <p><strong>First Name:</strong> {{this.selectedUser.first_name}}</p>
+        <p><strong>Last Name:</strong> {{this.selectedUser.last_name}}</p>
+        {{!-- <p><strong>Email:</strong> {{this.selectedUser.email}}</p> --}}
+        <p><strong>Description:</strong> {{this.selectedUser.description}}</p>
       </div>
     </div>
   {{/if}}

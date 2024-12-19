@@ -21,3 +21,4 @@ export default class GroupRoute extends Route {
     controller.groups = model;
   }
 }
+

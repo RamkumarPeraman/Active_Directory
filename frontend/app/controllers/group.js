@@ -5,12 +5,15 @@ import { tracked } from '@glimmer/tracking';
 export default class GroupController extends Controller {
   @tracked groups = [];
   @tracked selectedGroup = null;
+  @tracked sortBy = '';
+  @tracked searchQuery = ''; 
 
   @action
   async fetchGroups(params = {}) {
+    params.sortBy = this.sortBy; 
+    params.search = this.searchQuery;
     const query = new URLSearchParams(params).toString();
     const url = `http://localhost:8080/backend_war_exploded/GroupServlet?${query}`;
-
     try {
       const response = await fetch(url);
       if (!response.ok) {
@@ -22,7 +25,6 @@ export default class GroupController extends Controller {
       this.groups = [];
     }
   }
-
   @action
   async showGroupDetails(groupId) {
     try {
@@ -40,9 +42,22 @@ export default class GroupController extends Controller {
       this.selectedGroup = null;
     }
   }
-
   @action
   closePopup() {
     this.selectedGroup = null;
   }
+
+  @action
+  updateSortBy(event) {
+    this.sortBy = event.target.value;
+    this.fetchGroups();
+  }
+
+  @action
+  updateSearchQuery(event) {
+    this.searchQuery = event.target.value;
+    this.fetchGroups(); 
+  }
 }
+
+

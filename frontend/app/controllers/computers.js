@@ -5,9 +5,15 @@ import { tracked } from '@glimmer/tracking';
 export default class ComputerController extends Controller {
   @tracked computers = [];
   @tracked selectedComputer = null;
+  @tracked sortBy = '';
+  @tracked searchQuery = '';
 
+  // Fetch computers with search and sorting parameters
   @action
   async fetchComputers(params = {}) {
+    params.sortBy = this.sortBy;
+    params.search = this.searchQuery;
+
     const query = new URLSearchParams(params).toString();
     const url = `http://localhost:8080/backend_war_exploded/ComputerServlet?${query}`;
 
@@ -23,6 +29,7 @@ export default class ComputerController extends Controller {
     }
   }
 
+  // Show details of a selected computer
   @action
   async showComputerDetails(computerId) {
     try {
@@ -41,8 +48,23 @@ export default class ComputerController extends Controller {
     }
   }
 
+  // Close the popup
   @action
   closePopup() {
     this.selectedComputer = null;
+  }
+
+  // Update sort option and refetch computers
+  @action
+  updateSortBy(event) {
+    this.sortBy = event.target.value;
+    this.fetchComputers();
+  }
+
+  // Update search query and refetch computers
+  @action
+  updateSearchQuery(event) {
+    this.searchQuery = event.target.value;
+    this.fetchComputers();
   }
 }

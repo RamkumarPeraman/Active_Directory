@@ -1,4 +1,4 @@
-<div class="computer-grid">
+{{!-- <div class="computer-grid">
     <div value="" class="head_name">
   </div>
   <h1 class="heading">Computers</h1>
@@ -25,14 +25,6 @@
                <i>No Computer Name found</i>
             {{/if}}
         </p>
-         {{!-- <p>
-            <strong>Computer Location:</strong>
-            {{#if this.selectedComputer.computer_location}}
-               <i>{{this.selectedComputer.computer_location}}</i>
-            {{else}}
-              <i>No Computer Location found</i>
-            {{/if}}
-        </p> --}}
          <p>
             <strong>Description:</strong>
             {{#if this.selectedComputer.description}}
@@ -41,6 +33,66 @@
                <i>No Description found</i>
             {{/if}}
           </p>
+      </div>
+    </div>
+  {{/if}}
+</div> --}}
+
+
+<div class="computer-grid">
+  <h1 class="heading">Computers</h1>
+
+  <div class="search-options">
+    <div class="search-wrapper">
+      <img src="../asset/search.png" alt="Search" class="search_icon" />
+      <input type="text" id="search" name="search" placeholder="Search by Computer..." value={{this.searchQuery}} {{on "input" this.updateSearchQuery}} />
+    </div>
+  </div>
+
+  <div class="sort-options">
+    <label for="sort">Sort by:</label>
+    <select id="sort" name="sort" {{on "change" this.updateSortBy}}>
+      <option value="asc-desc">Ascending - Descending</option>
+      <option value="desc-asc">Descending - Ascending</option>
+      <option value="new-old">New - Old</option>
+      <option value="old-new">Old - New</option>
+    </select>
+  </div>
+
+  <div class="tiles">
+    {{#each this.computers as |computer|}}
+      <div class="tile">
+        <a href="#" {{on "click" (fn this.showComputerDetails computer.id)}}>
+          <img src="../asset/desktop.png" alt="Computer Icon" class="groups_icon" />
+          <br>{{computer.name}}
+        </a>
+      </div>
+    {{else}}
+      <h3 class="not_found">No computers found</h3>
+      <img src="../asset/empty.png" alt="No Computers" class="empty" />
+    {{/each}}
+  </div>
+
+  {{#if this.selectedComputer}}
+    <div class="popup">
+      <div class="popup-content">
+        <button class="close-button" type="button" {{on "click" this.closePopup}}>X</button>
+        <p>
+          <strong>Computer Name:</strong>
+          {{#if this.selectedComputer.name}}
+            <i>{{this.selectedComputer.name}}</i>
+          {{else}}
+            <i>No Computer Name found</i>
+          {{/if}}
+        </p>
+        <p>
+          <strong>Description:</strong>
+          {{#if this.selectedComputer.description}}
+            <i>{{this.selectedComputer.description}}</i>
+          {{else}}
+            <i>No Description found</i>
+          {{/if}}
+        </p>
       </div>
     </div>
   {{/if}}

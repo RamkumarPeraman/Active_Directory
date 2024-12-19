@@ -1,17 +1,37 @@
 <div class="group-grid">
-  <div value="" class="head_name">
+  <div class="head_name"></div>
+  <h1 class="heading">Groups</h1>
+<div class="search-options">
+  {{!-- <label for="search">Search by Group:</label> --}}
+  <div class="search-wrapper">
+    <img src="../asset/search.png" alt="Group" class="search_icon" />
+    <input type="text" id="search" name="search" placeholder="Search by Group..." value={{this.searchQuery}} {{on "input" this.updateSearchQuery}} />
   </div>
-  <h1 class="heading ">Groups</h1>
+</div>
+
+  <div class="sort-options">
+    <label for="sort">Sort by:</label>
+    <select id="sort" name="sort" {{on "change" this.updateSortBy}}>
+      <option value="asc-desc">Ascending - Descending</option>
+      <option value="desc-asc">Descending - Ascending</option>
+      <option value="new-old">New - Old</option>
+      <option value="old-new">Old - New</option>
+    </select>
+  </div>
+
   <div class="tiles">
     {{#each this.groups as |group|}}
       <div class="tile">
-        <a href="#" {{on "click" (fn this.showGroupDetails group.id)}}><img src="../asset/group.png" alt="Home" class="ou_icon o_icon" /><br>{{group.name}}</a>
+        <a href="#" {{on "click" (fn this.showGroupDetails group.id)}}>
+          <img src="../asset/group.png" alt="Group" class="group_icon" /><br>{{group.name}}
+        </a>
       </div>
     {{else}}
       <h3 class="not_found">No groups found</h3>
-      <img src="../asset/empty.png" alt="Home" class="empty" />
+      <img src="../asset/empty.png" alt="No Groups" class="empty" />
     {{/each}}
   </div>
+
   {{#if this.selectedGroup}}
     <div class="popup">
       <div class="popup-content">
@@ -35,4 +55,6 @@
       </div>
     </div>
   {{/if}}
-</div>
+</div> 
+
+
