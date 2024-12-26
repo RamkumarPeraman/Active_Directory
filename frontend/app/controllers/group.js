@@ -59,5 +59,3 @@ export default class GroupController extends Controller {
     this.fetchGroups(); 
   }
 }
-
-

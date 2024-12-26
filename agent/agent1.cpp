@@ -11,7 +11,7 @@
 using namespace std;
 
 // LDAP connection
-const char* ldap_server = "ldap://10.94.74.216";
+const char* ldap_server = "ldap://192.168.228.35";
 const char* username = "CN=Administrator,CN=Users,DC=zoho,DC=com";
 const char* password = "Ram@123";
 const char* comp_base_dn = "CN=Computers,DC=zoho,DC=com";
@@ -124,7 +124,7 @@ void processUserEntry(LDAP* ld, LDAPMessage* entry){// user entery
     if (!givenName.empty() && !sn.empty() && !description.empty()) {
         string userName = givenName + " " + sn;
         string userPostData = "{\"userName\":\"" + userName + "\", \"description\":\"" + description +"\"},";
-        // sendDataToServlet(URL+"/UserDataServlet", userPostData);
+        sendDataToServlet(URL+"/UserDataServlet", userPostData);
         userData += userPostData;
         servletSend = false;                
         // cout << "User data sent to UserDataServlet: " << givenName << ", " << sn << ", " << description << endl;
@@ -191,47 +191,70 @@ void fetchGroupData(const char* base_dn){
         groupData = ""; 
     }
 }
-void processComputerEntry(LDAP* ld, LDAPMessage* entry) { // Fetch computer data
-    string computerName, computerDescription;
+
+void processComputerEntry(LDAP* ld, LDAPMessage* entry) {
+    std::string computerName, computerDescription;
+    
+    // Fetch computer name and description
     struct berval** values = ldap_get_values_len(ld, entry, "cn");
     dataAddToVal(values, computerName);
     values = ldap_get_values_len(ld, entry, "description");
     dataAddToVal(values, computerDescription);
-    time_t computerLastModTime = getLastModificationTime(ld, entry);
-    string dn = ldap_get_dn(ld, entry);
+    
+    // Check if computerName and computerDescription are not empty
     if (!computerName.empty() && !computerDescription.empty()) {
-        string computerPostData = "{\"computerName\":\"" + computerName + "\", \"description\":\"" + computerDescription + "\"},";
-        // string computerPostData = "&computerName=" + computerName + "&description=" + computerDescription;
-        // sendDataToServlet(URL + "/ComputerDataServlet", computerPostData);
+        // Prepare JSON data for the computer
+        std::string computerPostData = "{\"computerName\":\"" + computerName + "\", \"description\":\"" + computerDescription + "\"},";
+        
+        // Append the computer data to the global variable
         computerData += computerPostData;
         servletSend = false;
-        // cout << "Computer data sent to ComputerDataServlet: " << computerName << ", " << computerDescription << endl;
     }
 }
+
+// Function to fetch computer data from LDAP
 void fetchComputerData(const char* base_dn) {
+    std::string combinedFilter;
+    // Create the LDAP filter based on the initial fetch flag
     if (!initialFetch) {
-        timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
+        std::string timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
         combinedFilter = "(&(objectClass=computer)" + timeFilter + ")";
     } else {
         combinedFilter = "(objectClass=computer)";
     }
+
+    // Attributes to fetch
     const char* computer_attributes[] = {"cn", "description", "whenChanged", NULL};
+    
+    // Initialize computerData with an opening bracket for JSON array
     computerData += "[";
+    
+    // Traverse the LDAP entries
     dataTraverse(base_dn, combinedFilter.c_str(), computer_attributes, processComputerEntry);
-    if(!computerData.empty() && !servletSend){
+    
+    // Finalize and send the computer data if there is any data collected
+    if (!computerData.empty() && !servletSend) {
         if (computerData.back() == ',') {
-            computerData.pop_back();
+            computerData.pop_back();  // Remove the trailing comma
         }
         computerData += "]";
-        string finalData = "{\"type\": \"computer\", \"computers\": " + computerData + "}";
-        sendDataToServlet(URL+"/ComputerDataServlet", finalData);
-        cout << "-------------------------------------------------------"<< endl;
-        cout << "Computer data sent to ComputerDataServlet: "<< endl << "-------------------------------------------------------" << endl<<finalData << endl;
+        
+        // Prepare the final JSON data
+        std::string finalData = "{\"type\": \"computer\", \"computers\": " + computerData + "}";
+        
+        // Send the final data to the servlet
+        sendDataToServlet(URL + "/ComputerDataServlet", finalData);
+        
+        // Output the sent data for debugging
+        std::cout << "-------------------------------------------------------" << std::endl;
+        std::cout << "Computer data sent to ComputerDataServlet: " << std::endl << finalData << std::endl;
+        
+        // Mark the data as sent and reset the computerData
         servletSend = true;
         computerData = "";
-
     }
 }
+
 void processOUEntry(LDAP* ld, LDAPMessage* entry) {
     string ouName, ouDescription;
     struct berval** values = ldap_get_values_len(ld, entry, "ou");
@@ -267,183 +290,6 @@ void fetchOUData(const char* base_dn) {// Fetch organizational unit data
 
     }
 }
-// void processOUEntry(LDAP* ld, LDAPMessage* entry) {
-//     string ouName, ouDescription;
-//     struct berval** values = ldap_get_values_len(ld, entry, "ou");
-//     dataAddToVal(values, ouName);
-//     values = ldap_get_values_len(ld, entry, "description");
-//     dataAddToVal(values, ouDescription);
-
-//     if (!ouName.empty() && !ouDescription.empty()) {
-//         string ouPostData = "{\"ouName\":\"" + ouName + "\", \"description\":\"" + ouDescription + "\"},";
-//         ouData += ouPostData;
-//         servletSend = false;
-//     }
-// }
-// void fetchOUData(const char* base_dn) {
-//     string combinedFilter;
-//     if (!initialFetch) {
-//         string timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
-//         combinedFilter = "(&(objectClass=organizationalUnit)" + timeFilter + ")";
-//     } else {
-//         combinedFilter = "(objectClass=organizationalUnit)";
-//     }
-//     const char* ou_attributes[] = {"ou", "description", "whenChanged", NULL};
-//     ouData += "[";
-//     dataTraverse(base_dn, combinedFilter.c_str(), ou_attributes, processOUEntry);
-//     if (!ouData.empty() && !servletSend) {
-//         if (ouData.back() == ',') {
-//             ouData.pop_back();
-//         }
-//         ouData += "]";
-//         string finalData = "{\"type\": \"organizationalUnit\", \"organizationalUnits\": " + ouData + "}";
-//         sendDataToServlet(URL + "/OUDataServlet", finalData);
-//         cout << "-------------------------------------------------------" << endl;
-//         cout << "All organizational unit data sent to OUDataServlet: " << endl << finalData << endl;
-//         servletSend = true;
-//         ouData = ""; 
-//     }
-// }
-
-
-// void fetchDeletedObjects(const char* base_dn){
-//     if (!initialFetch) {
-//         timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
-//         combinedFilter = "(&(isDeleted=TRUE)" + timeFilter + ")";
-//     } else {
-//         combinedFilter = "(isDeleted=TRUE)";
-//     }
-//     LDAPControl deleted_control = {(char*)"1.2.840.113556.1.4.417", {0, NULL}, 1};
-//     LDAPControl* server_controls[] = {&deleted_control, nullptr};
-//     LDAPMessage* result = nullptr;
-//     int rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, combinedFilter.c_str(), nullptr, 0, server_controls, nullptr, nullptr, LDAP_NO_LIMIT, &result);
-//     if (rc != LDAP_SUCCESS) {
-//         cerr << "ldap_search_ext_s: " << ldap_err2string(rc) << endl;
-//         ldap_unbind_ext_s(ld, nullptr, nullptr);
-//         return;
-//     }
-//     for (LDAPMessage* entry = ldap_first_entry(ld, result); entry != nullptr; entry = ldap_next_entry(ld, entry)) {
-//         char* dn = ldap_get_dn(ld, entry);
-//         string objectType, objectName, objectDescription;
-//         struct berval** values = ldap_get_values_len(ld, entry, "objectClass");
-//         if (values != nullptr) {
-//             for (int i = 0; values[i] != nullptr; ++i) {
-//                 string objectClass = values[i]->bv_val;
-//                 if(objectClass == "group" || objectClass == "user" || objectClass == "computer" || objectClass == "organizationalUnit") {
-//                     objectType = objectClass;
-//                     break;
-//                 }
-//             }
-//             ldap_value_free_len(values);
-//         }
-//         values = ldap_get_values_len(ld, entry, "cn");
-//         dataAddToVal(values, objectName);
-//         values = ldap_get_values_len(ld, entry, "description");
-//         dataAddToVal(values, objectDescription);
-//         time_t dltLastModTime = getLastModificationTime(ld, entry);
-//         if (initialFetch || (dltLastModTime > lastCheckedTime && processedEntries.find(dn) == processedEntries.end())) {
-//             if (!objectType.empty() && !objectName.empty() && !objectDescription.empty()) {
-//                 int len = objectName.size();
-//                 string objName = objectName.substr(0, len - 41);
-//                 string deleteObjData = "type=" + objectType + "&objectName=" + objName + "&description=" + objectDescription;
-//                 deletedObjectData += deleteObjData + "&";
-//                 sendDataToServlet(URL+"/DeletedObjDataServlet", deleteObjData);
-//                 cout << "Deleted object data sent to servlet: " << objName << ", " << objectType << ", " << objectDescription << endl;
-//                 processedEntries.insert(dn);
-//             }
-//         }
-//         ldap_memfree(dn);
-//     }
-//     if(!deletedObjectData.empty() && !servletSend){
-//         deletedObjectData.pop_back();
-//         sendDataToServlet(URL+"/DeletedObjDataServlet", deletedObjectData);
-//         deletedObjectData="";
-//     }
-//     ldap_msgfree(result);
-// }
-
-// void fetchDeletedObjects(const char* base_dn) {
-//     if (!initialFetch) {
-//         timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
-//         combinedFilter = "(&(isDeleted=TRUE)" + timeFilter + ")";
-//     } else {
-//         combinedFilter = "(isDeleted=TRUE)";
-//     }
-    
-//     LDAPControl deleted_control = {(char*)"1.2.840.113556.1.4.417", {0, NULL}, 1};
-//     LDAPControl* server_controls[] = {&deleted_control, nullptr};
-//     LDAPMessage* result = nullptr;
-//     int rc = ldap_search_ext_s(ld, base_dn, LDAP_SCOPE_SUBTREE, combinedFilter.c_str(), nullptr, 0, server_controls, nullptr, nullptr, LDAP_NO_LIMIT, &result);
-    
-//     if (rc != LDAP_SUCCESS) {
-//         // cerr << "ldap_search_ext_s: " << ldap_err2string(rc) << endl;
-//         // ldap_unbind_ext_s(ld, nullptr, nullptr);
-//         // return;
-//     }
-
-//     // Start building the JSON structure
-//     string deletedObjectData = "{\"deletedObjects\":[";
-
-//     for (LDAPMessage* entry = ldap_first_entry(ld, result); entry != nullptr; entry = ldap_next_entry(ld, entry)) {
-//         char* dn = ldap_get_dn(ld, entry);
-//         string objectType, objectName, objectDescription;
-
-//         struct berval** values = ldap_get_values_len(ld, entry, "objectClass");
-//         if (values != nullptr) {
-//             for (int i = 0; values[i] != nullptr; ++i) {
-//                 string objectClass = values[i]->bv_val;
-//                 if(objectClass == "group" || objectClass == "user" || objectClass == "computer" || objectClass == "organizationalUnit") {
-//                     objectType = objectClass;
-//                     break;
-//                 }
-//             }
-//             ldap_value_free_len(values);
-//         }
-
-//         // Get the object name and description
-//         values = ldap_get_values_len(ld, entry, "cn");
-//         dataAddToVal(values, objectName);
-//         values = ldap_get_values_len(ld, entry, "description");
-//         dataAddToVal(values, objectDescription);
-
-//         time_t dltLastModTime = getLastModificationTime(ld, entry);
-//         if (initialFetch || (dltLastModTime > lastCheckedTime && processedEntries.find(dn) == processedEntries.end())) {
-//             if (!objectType.empty() && !objectName.empty() && !objectDescription.empty()) {
-//                 int len = objectName.size();
-//                 string objName = objectName.substr(0, len - 41);
-
-//                 // Add the object data to the JSON string
-//                 deletedObjectData += "{\"type\":\"" + objectType + "\",";
-//                 if (objectType == "user") {
-//                     deletedObjectData += "\"userName\":\"" + objName + "\",";
-//                 } else if (objectType == "computer") {
-//                     deletedObjectData += "\"computerName\":\"" + objName + "\",";
-//                 }
-//                 else if(objectType == "group"){
-//                     deletedObjectData += "\"groupName\":\"" + objName + "\",";
-//                 }
-//                 deletedObjectData += "\"description\":\"" + objectDescription + "\"},";
-                
-//                 processedEntries.insert(dn);
-//             }
-//         }
-
-//         ldap_memfree(dn);
-//     }
-
-//     if (!deletedObjectData.empty()) {
-//         // Remove the last comma and close the JSON array
-//         deletedObjectData.pop_back();
-//         deletedObjectData += "]}";
-
-//         // Send the formatted JSON data to the servlet
-//         sendDataToServlet(URL + "/DeletedObjDataServlet", deletedObjectData);
-//         cout << "Deleted object data sent to servlet: " << deletedObjectData << endl;
-//     }
-
-//     ldap_msgfree(result);
-// }
-
 void fetchDeletedObjects(const char* base_dn) {
     if (!initialFetch) {
         timeFilter = "(whenChanged>=" + getLDAPTimeString(lastCheckedTime) + ")";
@@ -496,8 +342,6 @@ void fetchDeletedObjects(const char* base_dn) {
         time_t dltLastModTime = getLastModificationTime(ld, entry);
         if (initialFetch || (dltLastModTime > lastCheckedTime && processedEntries.find(dn) == processedEntries.end())) {
             if (!objectType.empty() && !objectName.empty() && !objectDescription.empty()) {
-
-
                 int len = objectName.size();
                 string objName = objectName.substr(0, len - 41); 
                 
@@ -532,8 +376,8 @@ void fetchDeletedObjects(const char* base_dn) {
 
 void fetchFromUsers(const char* base_dn){//fetch the data from Users
         fetchUserData(base_dn, "(objectClass=user)"); 
-        // fetchGroupData(base_dn);
-        // fetchComputerData(base_dn);
+        fetchGroupData(base_dn);
+        fetchComputerData(base_dn);
 
 }
 void fetchFromComputers (const char* base_dn){// function to fetc the data from the computer
@@ -580,14 +424,14 @@ void fetchOu(){
 
 int main(){
     ldapBind(); 
-    // fetchOu();
+    fetchOu();
     while(true){
-        // fetchDeletedObjects(dlt_base_dn);
+        fetchDeletedObjects(dlt_base_dn);
         fetchFromUsers(user_base_dn);
-        // fetchFromComputers(comp_base_dn);
-        // for(string ou_base_dn : ou_names){
-        //     fetchFromOU(ou_base_dn.c_str());
-        // }
+        fetchFromComputers(comp_base_dn);
+        for(string ou_base_dn : ou_names){
+            fetchFromOU(ou_base_dn.c_str());
+        }
         lastCheckedTime = time(nullptr);
         initialFetch = false;        
         sleep(60);
